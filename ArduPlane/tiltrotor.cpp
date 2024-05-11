@@ -98,6 +98,7 @@ Tiltrotor::Tiltrotor(QuadPlane& _quadplane, AP_MotorsMulticopter*& _motors):quad
 void Tiltrotor::setup()
 {
 
+    // SBL2 changed this line, no effect
     if (!enable.configured() && ((tilt_mask != 0) || (type == TILT_TYPE_BICOPTER))) {
         enable.set_and_save(1);
     }
@@ -217,6 +218,12 @@ void Tiltrotor::continuous_update(void)
     // the maximum rate of throttle change
     float max_change;
 
+    // SBL2 custom code change
+    if (!quadplane.in_vtol_mode()) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,  -SERVO_MAX);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, -SERVO_MAX);
+    }
+
     if (!quadplane.in_vtol_mode() && (!plane.arming.is_armed_and_safety_off() || !quadplane.assisted_flight)) {
         // we are in pure fixed wing mode. Move the tiltable motors all the way forward and run them as
         // a forward motor
@@ -248,6 +255,7 @@ void Tiltrotor::continuous_update(void)
         }
         return;
     }
+
 
     // remember the throttle level we're using for VTOL flight
     float motors_throttle = motors->get_throttle();
@@ -310,7 +318,7 @@ void Tiltrotor::continuous_update(void)
         } else {
             // manual control of forward throttle up to max VTOL angle
             float settilt = .01f * quadplane.forward_throttle_pct();
-            slew(MIN(settilt * max_angle_deg * (1/90.0), get_forward_flight_tilt())); 
+            slew(MIN(settilt * max_angle_deg * (1/90.0), get_forward_flight_tilt()));
         }
         return;
     }
@@ -326,7 +334,7 @@ void Tiltrotor::continuous_update(void)
         // Q_TILT_MAX. Below 50% throttle we decrease linearly. This
         // relies heavily on Q_VFWD_GAIN being set appropriately.
        float settilt = constrain_float((SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)-MAX(plane.aparm.throttle_min.get(),0)) * 0.02, 0, 1);
-       slew(MIN(settilt * max_angle_deg * (1/90.0), get_forward_flight_tilt())); 
+       slew(MIN(settilt * max_angle_deg * (1/90.0), get_forward_flight_tilt()));
     }
 }
 
@@ -365,6 +373,7 @@ void Tiltrotor::binary_update(void)
         if (current_tilt >= 1) {
             const uint16_t mask = is_zero(new_throttle)?0U:tilt_mask.get();
             // the motors are all the way forward, start using them for fwd thrust
+            // SBL2 this function unused for plane...
             motors->output_motor_mask(new_throttle, mask, plane.rudder_dt);
         }
     } else {
@@ -386,6 +395,7 @@ void Tiltrotor::update(void)
     if (type == TILT_TYPE_BINARY) {
         binary_update();
     } else {
+        // SBL2 BREADCRUMB
         continuous_update();
     }
 
@@ -418,7 +428,7 @@ void Tiltrotor::tilt_compensate_angle(float *thrust, uint8_t num_motors, float n
 {
     float tilt_total = 0;
     uint8_t tilt_count = 0;
-    
+
     // apply tilt_factors first
     for (uint8_t i=0; i<num_motors; i++) {
         if (!is_motor_tilting(i)) {
@@ -515,6 +525,7 @@ bool Tiltrotor::fully_up(void) const
  */
 void Tiltrotor::vectoring(void)
 {
+    // SBL2 this function isn't called!
     // total angle the tilt can go through
     const float total_angle = 90 + tilt_yaw_angle + fixed_angle;
     // output value (0 to 1) to get motors pointed straight up
@@ -648,6 +659,7 @@ void Tiltrotor::bicopter_output(void)
         quadplane.hold_stabilize(throttle * 0.01f);
         quadplane.motors_output(true);
     } else {
+        // SBL THIS IS THE NECESSARY LINE WTF!!!
         quadplane.motors_output(false);
     }
 

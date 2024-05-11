@@ -49,7 +49,7 @@ float Plane::calc_speed_scaler(void)
         // no speed estimate and not armed, use a unit scaling
         speed_scaler = 1;
     }
-    if (!plane.ahrs.using_airspeed_sensor()  && 
+    if (!plane.ahrs.using_airspeed_sensor()  &&
         (plane.flight_option_enabled(FlightOptions::SURPRESS_TKOFF_SCALING)) &&
         (plane.flight_stage == AP_FixedWing::FlightStage::TAKEOFF)) { //scaling is suppressed during climb phase of automatic takeoffs with no airspeed sensor being used due to problems with inaccurate airspeed estimates
         return MIN(speed_scaler, 1.0f) ;
@@ -323,7 +323,7 @@ void Plane::stabilize_stick_mixing_fbw()
 
     - hold a specific heading with ground steering
     - rate controlled with ground steering
-    - yaw control for coordinated flight    
+    - yaw control for coordinated flight
  */
 void Plane::stabilize_yaw()
 {
@@ -334,7 +334,7 @@ void Plane::stabilize_yaw()
     } else {
         // otherwise use ground steering when no input control and we
         // are below the GROUND_STEER_ALT
-        ground_steering = (channel_roll->get_control_in() == 0 && 
+        ground_steering = (channel_roll->get_control_in() == 0 &&
                                             fabsf(relative_altitude) < g.ground_steer_alt);
         if (!landing.is_ground_steering_allowed()) {
             // don't use ground steering on landing approach
@@ -426,10 +426,10 @@ void Plane::stabilize()
     }
 
     /*
-      see if we should zero the attitude controller integrators. 
+      see if we should zero the attitude controller integrators.
      */
     if (is_zero(get_throttle_input()) &&
-        fabsf(relative_altitude) < 5.0f && 
+        fabsf(relative_altitude) < 5.0f &&
         fabsf(barometer.get_climb_rate()) < 0.5f &&
         ahrs.groundspeed() < 3) {
         // we are low, with no climb rate, and zero throttle, and very
@@ -441,7 +441,7 @@ void Plane::stabilize()
 
         // if moving very slowly also zero the steering integrator
         if (ahrs.groundspeed() < 1) {
-            steerController.reset_I();            
+            steerController.reset_I();
         }
     }
 }
@@ -532,7 +532,7 @@ int16_t Plane::calc_nav_yaw_course(void)
  */
 int16_t Plane::calc_nav_yaw_ground(void)
 {
-    if (gps.ground_speed() < 1 && 
+    if (gps.ground_speed() < 1 &&
         is_zero(get_throttle_input()) &&
         flight_stage != AP_FixedWing::FlightStage::TAKEOFF &&
         flight_stage != AP_FixedWing::FlightStage::ABORT_LANDING) {
@@ -556,7 +556,7 @@ int16_t Plane::calc_nav_yaw_ground(void)
     }
     if (!is_zero(steer_rate)) {
         // pilot is giving rudder input
-        steer_state.locked_course = false;        
+        steer_state.locked_course = false;
     } else if (!steer_state.locked_course) {
         // pilot has released the rudder stick or we are still - lock the course
         steer_state.locked_course = true;
@@ -670,5 +670,5 @@ void Plane::update_load_factor(void)
         }
         nav_roll_cd = constrain_int32(nav_roll_cd, -roll_limit, roll_limit);
         roll_limit_cd = MIN(roll_limit_cd, roll_limit);
-    }    
+    }
 }

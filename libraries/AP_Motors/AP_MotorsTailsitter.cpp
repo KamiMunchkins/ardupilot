@@ -28,6 +28,16 @@ extern const AP_HAL::HAL& hal;
 
 #define SERVO_OUTPUT_RANGE  4500
 
+// the value below should make it so that an input of 0 corresponds to perfect up.
+#define SERVO_TILT_OFFSET 2000
+// I don't know why, but I never saw a tilt greater than -0.8, so scale the values up.
+// I believe this is a function of Q_MAX_ANGLE or whatever that param is.
+#define MAX_DETECTED_TILT 0.8
+#define SBL_CUSTOM_AIRCRAFT true
+
+
+float remap_servo_range(float tiltVal);
+
 // init
 void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type frame_type)
 {
@@ -101,15 +111,27 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
+    // forward tilt is like -4000, upward tilt is 0
+
+    // raw_tilt, -1 means full forward, 1 means full backward
+
+    // servo outputs map to 74, 73, and 70...throttle left, throttle right, throttle
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
 
     // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2]*100);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
+    // SBL2 custom code
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, remap_servo_range(_tilt_left));
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, remap_servo_range(_tilt_right));
+
+    // SBL2 NOTE I'm adding specialized controls inside the aircraft code.
+    // STEP 1, get my servo remapped
+    // STEP 2 apply roll factor based on the tilt
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -153,6 +175,15 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     // never boost above max, derived from throttle mix params
     const float min_throttle_out = MIN(_external_min_throttle, max_boost_throttle);
     const float max_throttle_out = _throttle_thrust_max * compensation_gain;
+
+    if (SBL_CUSTOM_AIRCRAFT) {
+        _tilt_left  = pitch_thrust;
+        _tilt_right = pitch_thrust;
+        _tilt_left *= 1.0 / (MAX_DETECTED_TILT);
+        _tilt_right *= 1.0 / (MAX_DETECTED_TILT);
+        _tilt_left = constrain_float(_tilt_left, -1.0f, 1.0f);
+        _tilt_right = constrain_float(_tilt_right, -1.0f, 1.0f);
+    }
 
     // sanity check throttle is above min and below current limited throttle
     if (throttle_thrust <= min_throttle_out) {
@@ -209,9 +240,11 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
         _throttle_out = throttle_thrust / compensation_gain;
     }
 
-    // thrust vectoring
-    _tilt_left  = pitch_thrust - yaw_thrust;
-    _tilt_right = pitch_thrust + yaw_thrust;
+    // disable thrust vectoring
+    if(!SBL_CUSTOM_AIRCRAFT) {
+        _tilt_left  = pitch_thrust - yaw_thrust;
+        _tilt_right = pitch_thrust + yaw_thrust;
+    }
 }
 
 // output_test_seq - spin a motor at the pwm value specified
@@ -241,4 +274,18 @@ void AP_MotorsTailsitter::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             // do nothing
             break;
     }
+}
+
+// since a 0 value corresponds to a 45 degree angle, we want 0 to correspond to 90 degrees (up).
+// this gets tricky when the offset isn't so obvious.
+float remap_servo_range(float tiltVal) {
+    float originalTiltPWM = tiltVal * SERVO_OUTPUT_RANGE;
+    float offsetToVertical = originalTiltPWM + SERVO_TILT_OFFSET;
+    float amplified = offsetToVertical * SERVO_OUTPUT_RANGE / (SERVO_OUTPUT_RANGE - SERVO_TILT_OFFSET);
+    if(amplified > SERVO_OUTPUT_RANGE) {
+        return SERVO_OUTPUT_RANGE;
+    } else if (amplified < -SERVO_OUTPUT_RANGE) {
+        return -SERVO_OUTPUT_RANGE;
+    }
+    return amplified;
 }

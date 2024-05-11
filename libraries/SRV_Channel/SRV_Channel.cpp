@@ -235,6 +235,7 @@ void SRV_Channel::calc_pwm(float output_scaled)
 
 void SRV_Channel::set_output_pwm(uint16_t pwm, bool force)
 {
+    // SBL2 this function doesn't affect forward flight.
     if (!override_active || force) {
         output_pwm = pwm;
         have_pwm_mask |= (1U<<ch_num);
@@ -252,7 +253,7 @@ void SRV_Channel::set_output_norm(float value)
 void SRV_Channel::set_angle(int16_t angle)
 {
     type_angle = true;
-    high_out = angle;    
+    high_out = angle;
     type_setup = true;
 }
 
@@ -313,7 +314,7 @@ bool SRV_Channel::is_motor(SRV_Channel::Aux_servo_function_t function)
 bool SRV_Channel::should_e_stop(SRV_Channel::Aux_servo_function_t function)
 {
     switch (function) {
-    case Aux_servo_function_t::k_heli_rsc:  
+    case Aux_servo_function_t::k_heli_rsc:
     case Aux_servo_function_t::k_heli_tail_rsc:
     case Aux_servo_function_t::k_motor1:
     case Aux_servo_function_t::k_motor2:
@@ -345,7 +346,7 @@ bool SRV_Channel::is_control_surface(SRV_Channel::Aux_servo_function_t function)
 {
     switch (function)
     {
-    case SRV_Channel::Aux_servo_function_t::k_flap:  
+    case SRV_Channel::Aux_servo_function_t::k_flap:
     case SRV_Channel::Aux_servo_function_t::k_flap_auto:
     case SRV_Channel::Aux_servo_function_t::k_aileron:
     case SRV_Channel::Aux_servo_function_t::k_dspoilerLeft1:

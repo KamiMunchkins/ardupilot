@@ -4,6 +4,10 @@
 #include <AC_PID/AC_PID.h>
 #include <AP_Scheduler/AP_Scheduler.h>
 
+
+#define LOG_PERIOD 5000
+
+
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
     // parameters from parent vehicle
@@ -437,6 +441,7 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
         _throttle_rpy_mix = MIN(_throttle_rpy_mix, MAX(mix_used, _throttle_rpy_mix_desired));
     }
     _throttle_rpy_mix = constrain_float(_throttle_rpy_mix, 0.1f, AC_ATTITUDE_CONTROL_MAX);
+
 }
 
 void AC_AttitudeControl_Multi::rate_controller_run()
@@ -467,6 +472,8 @@ void AC_AttitudeControl_Multi::rate_controller_run()
     _pd_scale = VECTORF_111;
 
     control_monitor_update();
+
+    _motor_passthru_yaw = _motors.get_yaw() + _motors.get_yaw_ff();
 }
 
 // sanity check parameters.  should be called once before takeoff

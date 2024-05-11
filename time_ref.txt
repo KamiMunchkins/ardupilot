@@ -1,0 +1,16 @@
+
+
+#include <GCS_MAVLink/GCS_MAVLink.h>
+
+    uint32_t debugTimestamp5 = 0;
+
+    #define LOG_PERIOD 5000
+
+    // SBL2 cp 2
+    uint32_t nowDebug = AP_HAL::millis();
+    bool debug = false;
+    if(nowDebug - debugTimestamp5 > LOG_PERIOD) {
+        // gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 OUTPUT AP_MotorsTailsitter.cpp");
+        debug = true;
+        debugTimestamp5 = nowDebug;
+    }
