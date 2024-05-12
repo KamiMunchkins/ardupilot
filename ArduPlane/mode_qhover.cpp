@@ -44,6 +44,7 @@ void ModeQHover::run()
     // Stabilize with fixed wing surfaces
     plane.stabilize_roll();
     plane.stabilize_pitch();
+    plane.flushElevatorMixing(true);
 }
 
 #endif

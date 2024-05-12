@@ -1882,6 +1882,8 @@ void QuadPlane::update(void)
         throttle_wait = false;
     }
 
+    tiltrotor.copiedFlapOffset = plane.flapOffset;
+
     // SBL2 BREADCRUMB
     tiltrotor.update();
     // the plumbing here goes from replicated fields

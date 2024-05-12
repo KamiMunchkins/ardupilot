@@ -32,7 +32,7 @@ bool Mode::enter()
 
     // cancel inverted flight
     plane.auto_state.inverted_flight = false;
-    
+
     // cancel waiting for rudder neutral
     plane.takeoff_state.waiting_for_rudder_neutral = false;
 
@@ -89,7 +89,7 @@ bool Mode::enter()
 
     // initialize speed variable used in AUTO and GUIDED for DO_CHANGE_SPEED commands
     plane.new_airspeed_cm = -1;
-    
+
     // clear postponed long failsafe if mode change (from GCS) occurs before recall of long failsafe
     plane.long_failsafe_pending = false;
 
@@ -181,7 +181,7 @@ void Mode::update_target_altitude()
         // once we reach a loiter target then lock to the final
         // altitude target
         plane.set_target_altitude_location(plane.next_WP_loc);
-    } else if (plane.target_altitude.offset_cm != 0 && 
+    } else if (plane.target_altitude.offset_cm != 0 &&
                !plane.current_loc.past_interval_finish_line(plane.prev_WP_loc, plane.next_WP_loc)) {
         // control climb/descent rate
         plane.set_target_altitude_proportion(plane.next_WP_loc, 1.0f-plane.auto_state.wp_proportion);
@@ -232,6 +232,7 @@ void Mode::run()
     plane.stabilize_roll();
     plane.stabilize_pitch();
     plane.stabilize_yaw();
+    plane.flushElevatorMixing(false);
 }
 
 // Reset rate and steering controllers

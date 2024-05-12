@@ -80,6 +80,7 @@ void ModeQLoiter::run()
         // Stabilize with fixed wing surfaces
         plane.stabilize_roll();
         plane.stabilize_pitch();
+        plane.flushElevatorMixing(true);
         return;
     }
     if (!quadplane.motors->armed()) {
@@ -106,7 +107,7 @@ void ModeQLoiter::run()
     float target_roll_cd, target_pitch_cd;
     quadplane.get_pilot_desired_lean_angles(target_roll_cd, target_pitch_cd, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
     loiter_nav->set_pilot_desired_acceleration(target_roll_cd, target_pitch_cd);
-    
+
     // run loiter controller
     if (!pos_control->is_active_xy()) {
         pos_control->init_xy_controller();
@@ -162,6 +163,7 @@ void ModeQLoiter::run()
     // Stabilize with fixed wing surfaces
     plane.stabilize_roll();
     plane.stabilize_pitch();
+    plane.flushElevatorMixing(true);
 }
 
 #endif

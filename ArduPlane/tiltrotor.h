@@ -29,6 +29,7 @@ public:
     // SBL2 custom code
     float vtolThrottleTransitionStart = 0;
     float vtolThrottleWeight = 0;
+    float copiedFlapOffset = 0;
 
     Tiltrotor(QuadPlane& _quadplane, AP_MotorsMulticopter*& _motors);
 

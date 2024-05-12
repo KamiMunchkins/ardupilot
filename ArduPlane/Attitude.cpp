@@ -158,6 +158,24 @@ float Plane::stabilize_roll_get_roll_out()
                                         ground_mode && !(plane.flight_option_enabled(FlightOptions::DISABLE_GROUND_PID_SUPPRESSION)));
 }
 
+// SBL2 custom code
+void Plane::flushElevatorMixing(bool vtolControl) {
+    // negative pitch is going DOWN
+    // positive pitch is going UP - this is the one we need to saturate.
+    float toElevator = constrain_float(virtualElevator*2, -4500, 4500);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, toElevator);
+    float mixingRange = 4500.0 / 2.0;
+    float extraUpPitch = virtualElevator - mixingRange;
+    if(extraUpPitch > 0 && !vtolControl) {
+        // since forward flight is full tilt forward, we have 2x the PWM range
+        float pwmRange = 4500 * 2;
+        float percentExtra = extraUpPitch / mixingRange;
+        flapOffset = percentExtra * pwmRange;
+    } else {
+        flapOffset = 0;
+    }
+}
+
 /*
   this is the main pitch stabilization function. It takes the
   previously set nav_pitch and calculates servo_out values to try to
@@ -169,12 +187,13 @@ void Plane::stabilize_pitch()
     if (force_elevator != 0) {
         // we are holding the tail down during takeoff. Just convert
         // from a percentage to a -4500..4500 centidegree angle
-        SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, 45*force_elevator);
+        virtualElevator = 45*force_elevator;
         return;
     }
 
     const float pitch_out = stabilize_pitch_get_pitch_out();
-    SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, pitch_out);
+    // SBL3
+    virtualElevator = pitch_out;
 }
 
 float Plane::stabilize_pitch_get_pitch_out()
@@ -194,7 +213,10 @@ float Plane::stabilize_pitch_get_pitch_out()
             }
         }
 
-        const int32_t pitch_out = pitchController.get_rate_out(degrees(pid_info.target), speed_scaler);
+        // pitch down only gets half the power as pitch up;
+        bool forceLimitI = lastPitchRateOut <= -4500/2;
+        const int32_t pitch_out = pitchController.get_rate_out(degrees(pid_info.target), speed_scaler, forceLimitI);
+        lastPitchRateOut = pitch_out;
         /* when slaving fixed wing control to VTOL control we need to decay the integrator to prevent
            opposing integrators balancing between the two controllers
         */
@@ -249,9 +271,10 @@ void ModeStabilize::stabilize_stick_mixing_direct()
     aileron = plane.channel_roll->stick_mixing(aileron);
     SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, aileron);
 
-    float elevator = SRV_Channels::get_output_scaled(SRV_Channel::k_elevator);
+    // SBL3
+    float elevator = plane.virtualElevator;
     elevator = plane.channel_pitch->stick_mixing(elevator);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, elevator);
+    plane.virtualElevator = elevator;
 }
 
 /*
@@ -406,8 +429,11 @@ void Plane::stabilize()
         // scripting is in control of roll and pitch rates and throttle
         const float speed_scaler = get_speed_scaler();
         const float aileron = rollController.get_rate_out(nav_scripting.roll_rate_dps, speed_scaler);
-        const float elevator = pitchController.get_rate_out(nav_scripting.pitch_rate_dps, speed_scaler);
+        bool forceLimitI = lastPitchRateOut <= -4500/2;
+        const float elevator = pitchController.get_rate_out(nav_scripting.pitch_rate_dps, speed_scaler, forceLimitI);
+        lastPitchRateOut = elevator;
         SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, aileron);
+        // SBL2 stabilize is only used in acro mode, so we don't care about mixing here
         SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, elevator);
         float rudder = 0;
         if (yawController.rate_control_enabled()) {

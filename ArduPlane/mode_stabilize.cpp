@@ -13,4 +13,5 @@ void ModeStabilize::run()
     plane.stabilize_pitch();
     stabilize_stick_mixing_direct();
     plane.stabilize_yaw();
+    plane.flushElevatorMixing(false);
 }

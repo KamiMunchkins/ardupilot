@@ -171,7 +171,7 @@ AP_PitchController::AP_PitchController(const AP_FixedWing &parms)
 /*
   AC_PID based rate controller
 */
-float AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool disable_integrator, float aspeed, bool ground_mode)
+float AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool disable_integrator, float aspeed, bool ground_mode, bool forceLimitI)
 {
     const float dt = AP::scheduler().get_loop_period_s();
 
@@ -184,6 +184,9 @@ float AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool d
 
     bool underspeed = aspeed <= 0.5*float(aparm.airspeed_min);
     if (underspeed) {
+        limit_I = true;
+    }
+    if(forceLimitI) {
         limit_I = true;
     }
 
@@ -255,12 +258,18 @@ float AP_PitchController::_get_rate_out(float desired_rate, float scaler, bool d
 */
 float AP_PitchController::get_rate_out(float desired_rate, float scaler)
 {
+    return get_rate_out(desired_rate, scaler, false);
+}
+
+// SBL2 custom code - we need to limit I for pitching down where the elevator is saturated at halfway given flap mixing
+float AP_PitchController::get_rate_out(float desired_rate, float scaler, bool forceLimitI)
+{
     float aspeed;
     if (!AP::ahrs().airspeed_estimate(aspeed)) {
         // If no airspeed available use average of min and max
         aspeed = 0.5f*(float(aparm.airspeed_min) + float(aparm.airspeed_max));
     }
-    return _get_rate_out(desired_rate, scaler, false, aspeed, false);
+    return _get_rate_out(desired_rate, scaler, false, aspeed, false, forceLimitI);
 }
 
 /*
@@ -367,7 +376,7 @@ float AP_PitchController::get_servo_out(int32_t angle_err, float scaler, bool di
         desired_rate *= (1 - roll_prop);
     }
 
-    return _get_rate_out(desired_rate, scaler, disable_integrator, aspeed, ground_mode);
+    return _get_rate_out(desired_rate, scaler, disable_integrator, aspeed, ground_mode, false);
 }
 
 void AP_PitchController::reset_I()

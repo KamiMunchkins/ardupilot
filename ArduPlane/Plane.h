@@ -896,6 +896,11 @@ private:
     int16_t calc_nav_yaw_course(void);
     int16_t calc_nav_yaw_ground(void);
 
+    // SBL2 custom code
+    void flushElevatorMixing(bool vtolControl);
+    float virtualElevator = 0;
+    float flapOffset = 0;
+
     // Log.cpp
     uint32_t last_log_fast_ms;
 
@@ -1256,6 +1261,7 @@ public:
     // SBL2 custom code
     float copiedVTOLThrottleTransitionStart = 0;
     float copiedVTOLThrottleWeight = 0;
+    float lastPitchRateOut = 0;
 
     void failsafe_check(void);
     bool is_landing() const override;

@@ -240,7 +240,6 @@ void Tiltrotor::continuous_update(void)
         // we can't use the throttle left and right values from the servos because they've already been reset to 0 at this point.
         servoTransitionStart = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
         gcs().send_text(MAV_SEVERITY_INFO, "switching to forward flight");
-        gcs().send_text(MAV_SEVERITY_INFO, "transition throttle %.2f", motors->last_avg_throttle);
         transitionStartTimestamp = AP_HAL::millis();
         vtolThrottleTransitionStart = motors->last_avg_throttle;
     }
@@ -253,7 +252,7 @@ void Tiltrotor::continuous_update(void)
         lastState = stateFlight;
     }
 
-    float servoTiltForward = -4500;
+    float servoTiltForward = -4500 + copiedFlapOffset;
     float finalTilt = 0;
     uint32_t now = AP_HAL::millis();
     if(now - transitionStartTimestamp >= TRANSITION_MS) {

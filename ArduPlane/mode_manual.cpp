@@ -1,10 +1,24 @@
 #include "mode.h"
 #include "Plane.h"
 
+#include <GCS_MAVLink/GCS_MAVLink.h>
+uint32_t debugTimestamp5 = 0;
+uint32_t debugTimestamp6 = 0;
+#define LOG_PERIOD 3000
+
 void ModeManual::update()
 {
     SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, plane.roll_in_expo(false));
-    SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, plane.pitch_in_expo(false));
+    // SBL2 custom code
+    plane.virtualElevator = plane.pitch_in_expo(false);
+    plane.flushElevatorMixing(false);
+    // SBL2 cp 2
+    uint32_t nowDebug = AP_HAL::millis();
+    if(nowDebug - debugTimestamp5 > LOG_PERIOD) {
+        gcs().send_text(MAV_SEVERITY_NOTICE, "main pitch_out %.2f", plane.virtualElevator);
+        debugTimestamp5 = nowDebug;
+    }
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, plane.pitch_in_expo(false));
     output_rudder_and_steering(plane.rudder_in_expo(false));
     float throttle = plane.get_throttle_input(true);
 

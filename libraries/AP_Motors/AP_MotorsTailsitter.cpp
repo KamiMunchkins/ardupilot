@@ -132,8 +132,14 @@ void AP_MotorsTailsitter::output_to_motors()
     // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
     // SBL2 custom code
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, remap_servo_range(_tilt_left));
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, remap_servo_range(_tilt_right));
+    if((_actuator[0] + _actuator[1]) == 0.0) {
+        // this is useful for ensuring our vertical position is correct.
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 0);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 0);
+    } else {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, remap_servo_range(_tilt_left));
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, remap_servo_range(_tilt_right));
+    }
 
     // SBL2 NOTE I'm adding specialized controls inside the aircraft code.
     // STEP 1, get my servo remapped

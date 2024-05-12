@@ -13,6 +13,8 @@ public:
     /* Do not allow copies */
     CLASS_NO_COPY(AP_PitchController);
 
+    // SBL2 custom code
+    float get_rate_out(float desired_rate, float scaler, bool forceLimitI);
     float get_rate_out(float desired_rate, float scaler);
     float get_servo_out(int32_t angle_err, float scaler, bool disable_integrator, bool ground_mode);
 
@@ -67,6 +69,6 @@ private:
 
     AP_PIDInfo _pid_info;
 
-    float _get_rate_out(float desired_rate, float scaler, bool disable_integrator, float aspeed, bool ground_mode);
+    float _get_rate_out(float desired_rate, float scaler, bool disable_integrator, float aspeed, bool ground_mode, bool forceLimitI);
     float _get_coordination_rate_offset(float &aspeed, bool &inverted) const;
 };

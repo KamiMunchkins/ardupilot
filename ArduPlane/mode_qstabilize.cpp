@@ -54,6 +54,7 @@ void ModeQStabilize::run()
         quadplane.run_esc_calibration();
         plane.stabilize_roll();
         plane.stabilize_pitch();
+        plane.flushElevatorMixing(true);
         return;
     }
 
@@ -64,6 +65,7 @@ void ModeQStabilize::run()
     // Stabilize with fixed wing surfaces
     plane.stabilize_roll();
     plane.stabilize_pitch();
+    plane.flushElevatorMixing(true);
 }
 
 // set the desired roll and pitch for a tailsitter
