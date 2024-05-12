@@ -787,6 +787,10 @@ void Plane::servos_twin_engine_mix(void)
             SRV_Channels::set_output_scaled(SRV_Channel::k_throttleRight, 0);
         }
     } else {
+        // SBL2 this is where throttle is set for the plane!
+        // hacked in code
+        throttle_left = (1.0 - copiedVTOLThrottleWeight) * throttle_left + (copiedVTOLThrottleWeight * copiedVTOLThrottleTransitionStart);
+        throttle_right = (1.0 - copiedVTOLThrottleWeight) * throttle_right + (copiedVTOLThrottleWeight * copiedVTOLThrottleTransitionStart);
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttleLeft, throttle_left);
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttleRight, throttle_right);
         throttle_slew_limit(SRV_Channel::k_throttleLeft);

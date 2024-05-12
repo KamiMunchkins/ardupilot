@@ -233,13 +233,16 @@ void Tiltrotor::continuous_update(void)
     // SBL2 custom code change
 
     if(quadplane.in_vtol_mode() && lastState == stateFlight) {
-        float currentVal = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
-        gcs().send_text(MAV_SEVERITY_INFO, "SBL2 sw VTOL mode motors at %.2f", currentVal);
+        // TRANSITION TO VTOL
+        gcs().send_text(MAV_SEVERITY_INFO, "switching to VTOL mode");
     } else if (!quadplane.in_vtol_mode() && lastState == stateVTOL) {
-        float currentVal = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
-        gcs().send_text(MAV_SEVERITY_INFO, "SBL2 sw Flight mode motors at %.2f", currentVal);
+        // TRANSITION TO FORWARD
+        // we can't use the throttle left and right values from the servos because they've already been reset to 0 at this point.
+        servoTransitionStart = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
+        gcs().send_text(MAV_SEVERITY_INFO, "switching to forward flight");
+        gcs().send_text(MAV_SEVERITY_INFO, "transition throttle %.2f", motors->last_avg_throttle);
         transitionStartTimestamp = AP_HAL::millis();
-        servoTransitionStart = currentVal;
+        vtolThrottleTransitionStart = motors->last_avg_throttle;
     }
 
     if(quadplane.in_vtol_mode()) {
@@ -255,13 +258,16 @@ void Tiltrotor::continuous_update(void)
     uint32_t now = AP_HAL::millis();
     if(now - transitionStartTimestamp >= TRANSITION_MS) {
         finalTilt = servoTiltForward;
+        vtolThrottleWeight = 0;
     } else {
         // interpolate the desired range
         float tiltRange = servoTransitionStart - servoTiltForward;
         float percentComplete = (float)(now - transitionStartTimestamp) / (float)TRANSITION_MS;
-        float interpolated = percentComplete * tiltRange;
-        finalTilt = servoTransitionStart - interpolated;
-        finalTilt = constrain_float(finalTilt, -4500, 4500);
+        float interpolatedTilt = percentComplete * tiltRange;
+        finalTilt = constrain_float(servoTransitionStart - interpolatedTilt, -4500, 4500);
+
+        // weight the hover throttle based on the transition % complete
+        vtolThrottleWeight = (1.0 - percentComplete);
     }
     if (!quadplane.in_vtol_mode()) {
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,  finalTilt);
@@ -294,6 +300,7 @@ void Tiltrotor::continuous_update(void)
             // prevent motor shutdown
             _motors_active = true;
         }
+
         if (!quadplane.motor_test.running) {
             // the motors are all the way forward, start using them for fwd thrust
             const uint16_t mask = is_zero(current_throttle)?0U:tilt_mask.get();

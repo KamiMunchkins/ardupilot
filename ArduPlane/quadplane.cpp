@@ -1884,6 +1884,9 @@ void QuadPlane::update(void)
 
     // SBL2 BREADCRUMB
     tiltrotor.update();
+    // the plumbing here goes from replicated fields
+    plane.copiedVTOLThrottleTransitionStart = tiltrotor.vtolThrottleTransitionStart;
+    plane.copiedVTOLThrottleWeight = tiltrotor.vtolThrottleWeight;
 
 #if HAL_LOGGING_ENABLED
     // motors logging

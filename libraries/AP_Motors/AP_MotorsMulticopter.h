@@ -34,6 +34,7 @@ public:
     void enable_motors(bool enable) {
         _enable_motors = enable;
     }
+    float last_avg_throttle = 0;
 
     // Constructor
     AP_MotorsMulticopter(uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT);

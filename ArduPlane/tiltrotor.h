@@ -26,6 +26,9 @@ friend class QuadPlane;
 friend class Plane;
 friend class Tiltrotor_Transition;
 public:
+    // SBL2 custom code
+    float vtolThrottleTransitionStart = 0;
+    float vtolThrottleWeight = 0;
 
     Tiltrotor(QuadPlane& _quadplane, AP_MotorsMulticopter*& _motors);
 

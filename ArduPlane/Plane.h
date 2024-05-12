@@ -1175,7 +1175,7 @@ private:
     void set_rudder_offset(float rudder_pct, bool run_yaw_rate_controller) override;
     bool nav_scripting_enable(uint8_t mode) override;
 #endif
- 
+
     enum Failsafe_Action {
         Failsafe_Action_None      = 0,
         Failsafe_Action_RTL       = 1,
@@ -1231,7 +1231,7 @@ private:
         ENABLED_NO_PITCH_TARGET,
         ENABLED_PITCH_TARGET
     };
-    
+
     enum class AutoTuneAxis {
         ROLL  = 1U <<0,
         PITCH = 1U <<1,
@@ -1253,6 +1253,10 @@ private:
     int32_t tecs_target_alt_cm;
 
 public:
+    // SBL2 custom code
+    float copiedVTOLThrottleTransitionStart = 0;
+    float copiedVTOLThrottleWeight = 0;
+
     void failsafe_check(void);
     bool is_landing() const override;
     bool is_taking_off() const override;
