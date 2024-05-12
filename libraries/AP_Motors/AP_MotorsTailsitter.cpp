@@ -111,6 +111,10 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
+    if(!_enable_motors) {
+        return;
+    }
+
     // forward tilt is like -4000, upward tilt is 0
 
     // raw_tilt, -1 means full forward, 1 means full backward

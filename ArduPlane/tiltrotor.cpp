@@ -207,6 +207,18 @@ float Tiltrotor::get_forward_flight_tilt() const
     return 1.0 - ((flap_angle_deg * (1/90.0)) * SRV_Channels::get_slew_limited_output_scaled(SRV_Channel::k_flap_auto) * 0.01);
 }
 
+///////// SBL HACKS FOR MY OWN TRANSITION
+
+int stateStartup = 0;
+int stateVTOL = 1;
+int stateFlight = 2;
+int lastState = stateStartup;
+uint32_t transitionStartTimestamp = 0;
+float servoTransitionStart;
+
+#define TRANSITION_MS 2000
+
+/// SBL2 END HACKS
 /*
   update motor tilt for continuous tilt servos
  */
@@ -219,10 +231,44 @@ void Tiltrotor::continuous_update(void)
     float max_change;
 
     // SBL2 custom code change
-    if (!quadplane.in_vtol_mode()) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,  -SERVO_MAX);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, -SERVO_MAX);
+
+    if(quadplane.in_vtol_mode() && lastState == stateFlight) {
+        float currentVal = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
+        gcs().send_text(MAV_SEVERITY_INFO, "SBL2 sw VTOL mode motors at %.2f", currentVal);
+    } else if (!quadplane.in_vtol_mode() && lastState == stateVTOL) {
+        float currentVal = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
+        gcs().send_text(MAV_SEVERITY_INFO, "SBL2 sw Flight mode motors at %.2f", currentVal);
+        transitionStartTimestamp = AP_HAL::millis();
+        servoTransitionStart = currentVal;
     }
+
+    if(quadplane.in_vtol_mode()) {
+        motors->enable_motors(true);
+        lastState = stateVTOL;
+    } else {
+        motors->enable_motors(false);
+        lastState = stateFlight;
+    }
+
+    float servoTiltForward = -4500;
+    float finalTilt = 0;
+    uint32_t now = AP_HAL::millis();
+    if(now - transitionStartTimestamp >= TRANSITION_MS) {
+        finalTilt = servoTiltForward;
+    } else {
+        // interpolate the desired range
+        float tiltRange = servoTransitionStart - servoTiltForward;
+        float percentComplete = (float)(now - transitionStartTimestamp) / (float)TRANSITION_MS;
+        float interpolated = percentComplete * tiltRange;
+        finalTilt = servoTransitionStart - interpolated;
+        finalTilt = constrain_float(finalTilt, -4500, 4500);
+    }
+    if (!quadplane.in_vtol_mode()) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,  finalTilt);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, finalTilt);
+    }
+
+    // END SBL2 custom code changes
 
     if (!quadplane.in_vtol_mode() && (!plane.arming.is_armed_and_safety_off() || !quadplane.assisted_flight)) {
         // we are in pure fixed wing mode. Move the tiltable motors all the way forward and run them as

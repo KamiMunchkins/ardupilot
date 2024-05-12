@@ -28,6 +28,13 @@
 class AP_MotorsMulticopter : public AP_Motors {
 public:
 
+    // SBL2 custom code
+    // Normally the motor algorithm will continue to run in forward flight, and so the transitions
+    // are whack. There's a way to handle this with Ardupilot I'm sure, but I'm just hacking this.
+    void enable_motors(bool enable) {
+        _enable_motors = enable;
+    }
+
     // Constructor
     AP_MotorsMulticopter(uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT);
 
@@ -69,7 +76,7 @@ public:
     // get minimum or maximum pwm value that can be output to motors
     int16_t             get_pwm_output_min() const { return _pwm_min; }
     int16_t             get_pwm_output_max() const { return _pwm_max; }
-    
+
     // parameter check for MOT_PWM_MIN/MAX, returns true if parameters are valid
     bool check_mot_pwm_params() const;
 
@@ -78,7 +85,7 @@ public:
     void                set_thrust_compensation_callback(thrust_compensation_fn_t callback) {
         _thrust_compensation_callback = callback;
     }
-    
+
     // disable the use of motor torque to control yaw. Used when an external mechanism such
     // as vectoring is used for yaw control
     virtual void        disable_yaw_torque(void) {}
@@ -108,6 +115,9 @@ public:
     static const struct AP_Param::GroupInfo        var_info[];
 
 protected:
+
+    // SBL2 custom field
+    bool _enable_motors = true;
 
     // run spool logic
     void                output_logic();
