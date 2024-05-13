@@ -189,6 +189,7 @@ float AC_Loiter::get_angle_max_cd() const
 void AC_Loiter::update(bool avoidance_on)
 {
     calc_desired_velocity(avoidance_on);
+    // SBL3 breadcrumb
     _pos_control.update_xy_controller();
 }
 

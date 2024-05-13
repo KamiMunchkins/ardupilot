@@ -112,6 +112,7 @@ void ModeQLoiter::run()
     if (!pos_control->is_active_xy()) {
         pos_control->init_xy_controller();
     }
+    // SBL3 BREADCRUMB
     loiter_nav->update();
 
     // nav roll and pitch are controller by loiter controller

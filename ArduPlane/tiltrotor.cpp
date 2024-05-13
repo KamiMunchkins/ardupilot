@@ -238,7 +238,9 @@ void Tiltrotor::continuous_update(void)
     } else if (!quadplane.in_vtol_mode() && lastState == stateVTOL) {
         // TRANSITION TO FORWARD
         // we can't use the throttle left and right values from the servos because they've already been reset to 0 at this point.
-        servoTransitionStart = SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft);
+        //
+        // make this compatible with a yawing blimp if necessary.
+        servoTransitionStart = (SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorLeft) + SRV_Channels::get_output_scaled(SRV_Channel::k_tiltMotorRight)) / 2.0;
         gcs().send_text(MAV_SEVERITY_INFO, "switching to forward flight");
         transitionStartTimestamp = AP_HAL::millis();
         vtolThrottleTransitionStart = motors->last_avg_throttle;
