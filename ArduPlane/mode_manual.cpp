@@ -4,7 +4,7 @@
 #include <GCS_MAVLink/GCS_MAVLink.h>
 uint32_t debugTimestamp5 = 0;
 uint32_t debugTimestamp6 = 0;
-#define LOG_PERIOD 3000
+#define LOG_PERIOD 5000
 
 void ModeManual::update()
 {

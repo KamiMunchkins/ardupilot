@@ -1,5 +1,7 @@
 #include "Plane.h"
 
+#define SERVO_RANGE 4500
+
 /*
   calculate speed scaling number for control surfaces. This is applied
   to PIDs to change the scaling of the PID with speed. At high speed
@@ -162,9 +164,26 @@ float Plane::stabilize_roll_get_roll_out()
 void Plane::flushElevatorMixing(bool vtolControl) {
     // negative pitch is going DOWN
     // positive pitch is going UP - this is the one we need to saturate.
-    float toElevator = constrain_float(virtualElevator*2, -4500, 4500);
+    // float toElevator = constrain_float(virtualElevator*2, -4500, 4500);
+
+    // we want neutral stick full elevator up, halfway forward is neutral elevator, all forward is elev down
+    float toElevator = constrain_float((virtualElevator + (SERVO_RANGE / 2.0)) * 2.0, -4500, 4500);
     SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, toElevator);
-    float mixingRange = 4500.0 / 2.0;
+
+    // tilt is controller separately by tiltrotor code, and full forward is already -4500,
+    // therefore we have double the range to account for here.
+
+    if(virtualElevator > 0 && !vtolControl) {
+        // we are pitching up, extra PWM after neutral goes to flaps.
+        flapOffset = virtualElevator * 2;
+    }
+
+    // mixingRange is the spectrum range of PWM inputs applicable to raising the flaps
+
+    // SBL old code from v1, delete later once confirmed we don't care. This behavior was
+    // a more conventional pitch up starts to tilt the motors at halfway.
+    /*
+    float mixingRange = 4500.0 / 2;
     float extraUpPitch = virtualElevator - mixingRange;
     if(extraUpPitch > 0 && !vtolControl) {
         // since forward flight is full tilt forward, we have 2x the PWM range
@@ -174,6 +193,7 @@ void Plane::flushElevatorMixing(bool vtolControl) {
     } else {
         flapOffset = 0;
     }
+    */
 }
 
 /*
@@ -214,7 +234,10 @@ float Plane::stabilize_pitch_get_pitch_out()
         }
 
         // pitch down only gets half the power as pitch up;
-        bool forceLimitI = lastPitchRateOut <= -4500/2;
+        // bool forceLimitI = lastPitchRateOut <= -4500/2;
+
+        // above feature no longer necessary, but I'm not deleting it.
+        bool forceLimitI = false;
         const int32_t pitch_out = pitchController.get_rate_out(degrees(pid_info.target), speed_scaler, forceLimitI);
         lastPitchRateOut = pitch_out;
         /* when slaving fixed wing control to VTOL control we need to decay the integrator to prevent
@@ -429,7 +452,10 @@ void Plane::stabilize()
         // scripting is in control of roll and pitch rates and throttle
         const float speed_scaler = get_speed_scaler();
         const float aileron = rollController.get_rate_out(nav_scripting.roll_rate_dps, speed_scaler);
-        bool forceLimitI = lastPitchRateOut <= -4500/2;
+
+        // bool forceLimitI = lastPitchRateOut <= -4500/2;
+        // disabling above feature
+        bool forceLimitI = false;
         const float elevator = pitchController.get_rate_out(nav_scripting.pitch_rate_dps, speed_scaler, forceLimitI);
         lastPitchRateOut = elevator;
         SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, aileron);

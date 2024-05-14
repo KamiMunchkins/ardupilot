@@ -29,7 +29,7 @@ extern const AP_HAL::HAL& hal;
 #define SERVO_OUTPUT_RANGE  4500
 
 // the value below should make it so that an input of 0 corresponds to perfect up.
-#define SERVO_TILT_OFFSET 2000
+#define SERVO_TILT_OFFSET 1800
 // I don't know why, but I never saw a tilt greater than -0.8, so scale the values up.
 // I believe this is a function of Q_MAX_ANGLE or whatever that param is.
 #define MAX_DETECTED_TILT 0.8
