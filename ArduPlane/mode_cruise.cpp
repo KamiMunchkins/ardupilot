@@ -1,6 +1,13 @@
 #include "mode.h"
 #include "Plane.h"
 
+// SBL4 custom code
+
+#define LOOK_AHEAD_DISTANCE_METERS 10
+#define NEW_WAYPOINT_DISTANCE 2
+// SBL HACK
+bool haveWaypoint = false;
+
 bool ModeCruise::_enter()
 {
     locked_heading = false;
@@ -36,7 +43,7 @@ void ModeCruise::update()
         plane.set_target_altitude_current();
     }
 #endif
-    
+
     if (!locked_heading) {
         plane.nav_roll_cd = plane.channel_roll->norm_input() * plane.roll_limit_cd;
         plane.update_load_factor();
@@ -61,14 +68,16 @@ void ModeCruise::navigate()
 
     // check if we are moving in the direction of the front of the vehicle
     const int32_t ground_course_cd = plane.gps.ground_course_cd();
-    const bool moving_forwards = fabsf(wrap_PI(radians(ground_course_cd * 0.01) - plane.ahrs.get_yaw())) < M_PI_2;
+    // const bool moving_forwards = fabsf(wrap_PI(radians(ground_course_cd * 0.01) - plane.ahrs.get_yaw())) < M_PI_2;
+
+    bool noUserInput = plane.channel_roll->get_control_in() == 0 && plane.rudder_input() == 0;
 
     if (!locked_heading &&
-        plane.channel_roll->get_control_in() == 0 &&
-        plane.rudder_input() == 0 &&
+        noUserInput &&
         plane.gps.status() >= AP_GPS::GPS_OK_FIX_2D &&
-        plane.gps.ground_speed() >= 3 &&
-        moving_forwards &&
+        // SBL remove the requirement for ground speed in blimp
+        // plane.gps.ground_speed() >= 3 &&
+        // moving_forwards &&
         lock_timer_ms == 0) {
         // user wants to lock the heading - start the timer
         lock_timer_ms = millis();
@@ -82,11 +91,23 @@ void ModeCruise::navigate()
         locked_heading_cd = ground_course_cd;
         plane.prev_WP_loc = plane.current_loc;
     }
+
+    float distanceToWaypointM = plane.next_WP_loc.get_distance(plane.current_loc);
+    if(!noUserInput || distanceToWaypointM <= NEW_WAYPOINT_DISTANCE) {
+        haveWaypoint = false;
+    }
     if (locked_heading) {
-        plane.next_WP_loc = plane.prev_WP_loc;
-        // always look 1km ahead
-        plane.next_WP_loc.offset_bearing(locked_heading_cd*0.01f, plane.prev_WP_loc.get_distance(plane.current_loc) + 1000);
-        plane.nav_controller->update_waypoint(plane.prev_WP_loc, plane.next_WP_loc);
+        if(!haveWaypoint) {
+            plane.next_WP_loc = plane.prev_WP_loc;
+            // always look LOOK_AHEAD_DISTANCE_METERS ahead
+            plane.next_WP_loc.offset_bearing(locked_heading_cd*0.01f, plane.prev_WP_loc.get_distance(plane.current_loc) + LOOK_AHEAD_DISTANCE_METERS);
+            float airspeedTarget = plane.target_airspeed_cm * 0.01;
+            gcs().send_text(MAV_SEVERITY_INFO, "Set new waypoint with target speed %.2f", airspeedTarget);
+            // I don't know if this should go back outside the loop
+            haveWaypoint = true;
+        }
+        // plane.nav_controller->update_waypoint(plane.prev_WP_loc, plane.next_WP_loc);
+        plane.nav_controller->update_waypoint(plane.current_loc, plane.next_WP_loc);
     }
 }
 

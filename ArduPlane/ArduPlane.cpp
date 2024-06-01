@@ -1,6 +1,6 @@
 /*
    Lead developer: Andrew Tridgell
- 
+
    Authors:    Doug Weibel, Jose Julio, Jordi Munoz, Jason Short, Randy Mackay, Pat Hickey, John Arne Birkeland, Olivier Adler, Amilcar Lucas, Gregory Fletcher, Paul Riseborough, Brandon Jones, Jon Challinger, Tom Pittenger
    Thanks to:  Chris Anderson, Michael Oborne, Paul Mather, Bill Premerlani, James Cohen, JB from rotorFX, Automatik, Fefenin, Peter Meister, Remzibi, Yury Smirnov, Sandro Benigno, Max Levine, Roberto Navoni, Lorenz Meier, Yury MonZon
 
@@ -21,6 +21,10 @@
  */
 
 #include "Plane.h"
+#include <GCS_MAVLink/GCS_MAVLink.h>
+uint32_t debugTimestamp6 = 0;
+
+#define LOG_PERIOD 5000
 
 #define SCHED_TASK(func, rate_hz, max_time_micros, priority) SCHED_TASK_CLASS(Plane, &plane, func, rate_hz, max_time_micros, priority)
 #define FAST_TASK(func) FAST_TASK_CLASS(Plane, &plane, func)
@@ -358,7 +362,7 @@ void Plane::one_second_loop()
         gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
             last_home_update_ms = gps.last_message_time_ms();
             update_home();
-            
+
             // reset the landing altitude correction
             landing.alt_offset = 0;
     }
@@ -410,9 +414,9 @@ void Plane::airspeed_ratio_update(void)
         gps.status() < AP_GPS::GPS_OK_FIX_3D ||
         gps.ground_speed() < 4) {
         // don't calibrate when not moving
-        return;        
+        return;
     }
-    if (airspeed.get_airspeed() < aparm.airspeed_min && 
+    if (airspeed.get_airspeed() < aparm.airspeed_min &&
         gps.ground_speed() < (uint32_t)aparm.airspeed_min) {
         // don't calibrate when flying below the minimum airspeed. We
         // check both airspeed and ground speed to catch cases where
@@ -557,7 +561,7 @@ void Plane::update_alt()
     } else if (gps.status() >= AP_GPS::GPS_OK_FIX_3D && gps.have_vertical_velocity()) {
         sink_rate = gps.velocity().z;
     } else {
-        sink_rate = -barometer.get_climb_rate();        
+        sink_rate = -barometer.get_climb_rate();
     }
 
     // low pass the sink rate to take some of the noise out
@@ -581,7 +585,31 @@ void Plane::update_alt()
         should_run_tecs = false;
     }
 #endif
-    
+
+    // SBL2 cp 2
+    uint32_t nowDebug = AP_HAL::millis();
+    bool debug = false;
+    if(nowDebug - debugTimestamp6 > LOG_PERIOD) {
+        debug = true;
+        debugTimestamp6 = nowDebug;
+    }
+    // SBL5 hack
+    // throttle_suppressed = false;
+    /*
+    if (debug) {
+        if(should_run_tecs) {
+            gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 should run tecs");
+        } else {
+            gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 should NOT run tecs");
+        }
+        if(!throttle_suppressed) {
+            gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 throttle not suppressed, GOOD");
+        } else {
+            gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 throttle suppressed, BAD");
+        }
+    }
+    */
+
     if (should_run_tecs && !throttle_suppressed) {
 
         float distance_beyond_land_wp = 0;
@@ -597,6 +625,9 @@ void Plane::update_alt()
             // 10m in the demanded height to push TECS to climb
             // quickly
             tecs_target_alt_cm = MAX(tecs_target_alt_cm, prev_WP_loc.alt - home.alt) + (g2.rtl_climb_min+10)*100;
+        }
+        if(debug) {
+            gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 TECS with target airspeed %.2f", (float)target_airspeed_cm);
         }
 
         TECS_controller.update_pitch_throttle(tecs_target_alt_cm,
@@ -616,6 +647,9 @@ void Plane::update_alt()
  */
 void Plane::update_flight_stage(void)
 {
+    // SBL5 HACK
+    set_flight_stage(AP_FixedWing::FlightStage::NORMAL);
+    return;
     // Update the speed & height controller states
     if (control_mode->does_auto_throttle() && !throttle_suppressed) {
         if (control_mode == &mode_auto) {

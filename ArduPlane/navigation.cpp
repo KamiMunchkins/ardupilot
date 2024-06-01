@@ -1,5 +1,18 @@
 #include "Plane.h"
 
+// SBL2 hacked cruise speed
+
+// Ardupilot gives an out of range error when I set the value to 0
+// Forcing the value here.
+#define HACKED_MIN_AIRSPEED 0
+
+#include <GCS_MAVLink/GCS_MAVLink.h>
+
+uint32_t debugTimestamp5 = 0;
+
+#define LOG_PERIOD 5000
+
+
 /*
   reset the total loiter angle
  */
@@ -158,7 +171,55 @@ void Plane::calc_airspeed_errors()
 
 
     // FBW_B/cruise airspeed target
-    if (!failsafe.rc_failsafe && (control_mode == &mode_fbwb || control_mode == &mode_cruise)) {
+    if (!failsafe.rc_failsafe && (control_mode == &mode_cruise)) {
+        // SBL4 custom hack to change cruise to target 0 mph airspeed
+        // as it turns out this is identical to below, but I want to guarantee the outcome
+        // and eliminate the uncertainty with which flight mode is selected below.
+
+        float control_min = 0.0f;
+        float control_mid = 0.0f;
+        const float control_max = channel_throttle->get_range();
+        const float control_in = get_throttle_input();
+        switch (channel_throttle->get_type()) {
+        case RC_Channel::ControlType::ANGLE:
+                control_min = -control_max;
+                break;
+        case RC_Channel::ControlType::RANGE:
+                control_mid = channel_throttle->get_control_mid();
+                break;
+        }
+        // SBL2 cp 2
+        uint32_t nowDebug = AP_HAL::millis();
+        bool debug = false;
+        if(nowDebug - debugTimestamp5 > LOG_PERIOD) {
+            debug = true;
+            debugTimestamp5 = nowDebug;
+        }
+        if (control_in <= control_mid) {
+            target_airspeed_cm = linear_interpolate(HACKED_MIN_AIRSPEED * 100, aparm.airspeed_cruise * 100,
+                                                    control_in,
+                                                    control_min, control_mid);
+            if(debug) {
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c1 speed %.2f ", (float)target_airspeed_cm);
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c1 arsp range %.2f - %.2f", (float)(HACKED_MIN_AIRSPEED * 100), (float)(aparm.airspeed_cruise * 100));
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c1 control in %.2f", (float)control_in);
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c1 control mapping %.2f - %.2f", (float)control_min, (float)control_mid);
+            }
+        } else {
+            target_airspeed_cm = linear_interpolate(aparm.airspeed_cruise * 100, aparm.airspeed_max * 100,
+                                                    control_in,
+                                                    control_mid, control_max);
+            if(debug) {
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c2 speed %.2f ", (float) target_airspeed_cm);
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c2 arsp range %.2f - %.2f", (float)(aparm.airspeed_cruise * 100), (float)(aparm.airspeed_max * 100));
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c2 control in %.2f", (float)control_in);
+                gcs().send_text(MAV_SEVERITY_NOTICE, "SBL2 c2 control mapping %.2f - %.2f", (float)control_mid, (float)control_max);
+            }
+        }
+
+
+        // SBL4 END CUSTOM HACK
+    } else if (!failsafe.rc_failsafe && (control_mode == &mode_fbwb)) {
         if (flight_option_enabled(FlightOptions::CRUISE_TRIM_AIRSPEED)) {
             target_airspeed_cm = aparm.airspeed_cruise*100;
         } else if (flight_option_enabled(FlightOptions::CRUISE_TRIM_THROTTLE)) {
@@ -175,7 +236,7 @@ void Plane::calc_airspeed_errors()
                     break;
             }
             if (control_in <= control_mid) {
-                target_airspeed_cm = linear_interpolate(aparm.airspeed_min * 100, aparm.airspeed_cruise*100,
+                target_airspeed_cm = linear_interpolate(HACKED_MIN_AIRSPEED * 100, aparm.airspeed_cruise*100,
                                                         control_in,
                                                         control_min, control_mid);
             } else {
@@ -184,8 +245,8 @@ void Plane::calc_airspeed_errors()
                                                         control_mid, control_max);
             }
         } else {
-            target_airspeed_cm = ((int32_t)(aparm.airspeed_max - aparm.airspeed_min) *
-                                  get_throttle_input()) + ((int32_t)aparm.airspeed_min * 100);
+            target_airspeed_cm = ((int32_t)(aparm.airspeed_max - HACKED_MIN_AIRSPEED) *
+                                  get_throttle_input()) + ((int32_t)HACKED_MIN_AIRSPEED * 100);
         }
 #if OFFBOARD_GUIDED == ENABLED
     } else if (control_mode == &mode_guided && guided_state.target_airspeed_cm >  0.0) { // if offboard guided speed change cmd not set, then this section is skipped
@@ -198,9 +259,9 @@ void Plane::calc_airspeed_errors()
 
         //target_airspeed_cm recalculated then clamped to between MIN airspeed and MAX airspeed by constrain_float
         if (is_positive(guided_state.target_airspeed_accel)) {
-            target_airspeed_cm = constrain_float(MIN(guided_state.target_airspeed_cm, target_airspeed_cm), aparm.airspeed_min *100, aparm.airspeed_max *100);
+            target_airspeed_cm = constrain_float(MIN(guided_state.target_airspeed_cm, target_airspeed_cm), HACKED_MIN_AIRSPEED *100, aparm.airspeed_max *100);
         } else {
-            target_airspeed_cm = constrain_float(MAX(guided_state.target_airspeed_cm, target_airspeed_cm), aparm.airspeed_min *100, aparm.airspeed_max *100);
+            target_airspeed_cm = constrain_float(MAX(guided_state.target_airspeed_cm, target_airspeed_cm), HACKED_MIN_AIRSPEED *100, aparm.airspeed_max *100);
         }
 
 #endif // OFFBOARD_GUIDED == ENABLED
@@ -268,7 +329,7 @@ void Plane::calc_airspeed_errors()
     }
 
     // Apply airspeed limit
-    target_airspeed_cm = constrain_int32(target_airspeed_cm, aparm.airspeed_min*100, aparm.airspeed_max*100);
+    target_airspeed_cm = constrain_int32(target_airspeed_cm, HACKED_MIN_AIRSPEED*100, aparm.airspeed_max*100);
 
     // use the TECS view of the target airspeed for reporting, to take
     // account of the landing speed

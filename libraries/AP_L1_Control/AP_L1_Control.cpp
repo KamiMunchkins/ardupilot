@@ -1,6 +1,12 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AP_L1_Control.h"
 
+// SBL2 HACKS
+//
+#define COMPASS_START_THRESH 2
+#define COMPASS_END_THRESH 3
+bool forceCompassOrientation = false;
+
 extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
@@ -85,7 +91,7 @@ int32_t AP_L1_Control::nav_roll_cd(void) const
 		liftForce * sin(roll) = gravityForce * lateralAcceleration / gravityAcceleration; // as mass = gravityForce/gravityAcceleration
 		see issue 24319 [https://github.com/ArduPilot/ardupilot/issues/24319]
 		Multiplier 100.0f is for converting degrees to centidegrees
-		Made changes to avoid zero division as proposed by Andrew Tridgell: https://github.com/ArduPilot/ardupilot/pull/24331#discussion_r1267798397		 
+		Made changes to avoid zero division as proposed by Andrew Tridgell: https://github.com/ArduPilot/ardupilot/pull/24331#discussion_r1267798397
 	*/
 	float pitchLimL1 = radians(60); // Suggestion: constraint may be modified to pitch limits if their absolute values are less than 90 degree and more than 60 degrees.
 	float pitchL1 = constrain_float(_ahrs.get_pitch(),-pitchLimL1,pitchLimL1);
@@ -248,6 +254,17 @@ void AP_L1_Control::update_waypoint(const Location &prev_WP, const Location &nex
         // use a small ground speed vector in the right direction,
         // allowing us to use the compass heading at zero GPS velocity
         groundSpeed = 0.1f;
+        _groundspeed_vector = Vector2f(cosf(get_yaw()), sinf(get_yaw())) * groundSpeed;
+    }
+
+    // SBL2 custom code to avoid fluctuating to GPS yaw
+    if (groundSpeed < COMPASS_START_THRESH) {
+        forceCompassOrientation = true;
+    } else if (groundSpeed > COMPASS_END_THRESH) {
+        forceCompassOrientation = false;
+    }
+    if(forceCompassOrientation) {
+        // SBL2 custom hack so that we don't use GPS velocity until COMPASS_END_THRESH m/s
         _groundspeed_vector = Vector2f(cosf(get_yaw()), sinf(get_yaw())) * groundSpeed;
     }
 
