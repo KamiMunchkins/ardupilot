@@ -101,7 +101,7 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
     // @DisplayName: Motor normal or reverse
     // @Description: Used to change motor rotation directions without changing wires
     // @Values: 1:normal,-1:reverse
-    // @User: Standard
+    // @User: Standagd
     AP_GROUPINFO("10_DIRECTION", 11, AP_Motors6DOF, _motor_reverse[9], 1),
 
     // @Param: 11_DIRECTION
@@ -123,10 +123,55 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
 
 void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type frame_type)
 {
+    debugSet = true;
     // remove existing motors
     for (int8_t i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         remove_motor(i);
     }
+
+    for(int i=0; i<12; i++) {
+        _motor_reverse[i].set_and_save(1);
+    }
+    _frame_class_string = "EBlimp Custom";
+    // 1, what should the throttle factor be for all of these? I believe 1
+    // add_motor_raw_6dof(motNum, roll, pitch, yaw, throttle, forward, lateral, testOrder);
+    float noForward = 0;
+    float noLateral = 0;
+    float noRoll = 0;
+    float noPitch = 0;
+    float noYaw = 0;
+
+    float yawFactorCCW = 1.0;
+    float yawFactorCW = -1.0;
+
+    // top left
+    add_motor_raw_6dof(AP_MOTORS_MOT_1, 0.71, -0.71, noYaw, 1.0, noForward, noLateral, 1);
+    // top right
+    add_motor_raw_6dof(AP_MOTORS_MOT_2, -0.71, -0.71, noYaw, 1.0, noForward, noLateral, 2);
+    // bottom right
+    add_motor_raw_6dof(AP_MOTORS_MOT_3, -0.71, 0.71, noYaw, 1.0, noForward, noLateral, 3);
+    // bottom left
+    add_motor_raw_6dof(AP_MOTORS_MOT_4, 0.71, 0.71, noYaw, 1.0, noForward, noLateral, 4);
+
+    // front right
+    add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCW, 0.0, -1.0, noLateral, 5);
+    // front left
+    add_motor_raw_6dof(AP_MOTORS_MOT_6, noRoll, noPitch, yawFactorCCW, 0.0, -1.0, noLateral, 6);
+    // back left
+    add_motor_raw_6dof(AP_MOTORS_MOT_7, noRoll, noPitch, yawFactorCW, 0.0, 1.0, noLateral, 7);
+    // back right
+    add_motor_raw_6dof(AP_MOTORS_MOT_8, noRoll, noPitch, yawFactorCCW, 0.0, 1.0, noLateral, 8);
+
+    // left top
+    add_motor_raw_6dof(AP_MOTORS_MOT_9, noRoll, noPitch, yawFactorCW, 0.0, noForward, 1.0, 9);
+    // left bottom
+    add_motor_raw_6dof(AP_MOTORS_MOT_10, noRoll, noPitch, yawFactorCCW, 0.0, noForward, 1.0, 10);
+    // right bottom
+    add_motor_raw_6dof(AP_MOTORS_MOT_11, noRoll, noPitch, yawFactorCW, 0.0, noForward, -1.0, 11);
+    // right top
+    add_motor_raw_6dof(AP_MOTORS_MOT_12, noRoll, noPitch, yawFactorCCW, 0.0, noForward, -1.0, 12);
+
+    return;
 
     // hard coded config for supported frames
     switch ((sub_frame_t)frame_class) {

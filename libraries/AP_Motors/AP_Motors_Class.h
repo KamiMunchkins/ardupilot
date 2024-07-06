@@ -52,9 +52,12 @@
 // motor update rate
 #define AP_MOTORS_SPEED_DEFAULT     490 // default output rate to the motors
 
+
 /// @class      AP_Motors
 class AP_Motors {
 public:
+    bool debugSet = false;
+    bool debugSet3 = false;
 
     enum motor_frame_class {
         MOTOR_FRAME_UNDEFINED = 0,
@@ -302,7 +305,7 @@ protected:
 
     // add a motor to the motor map
     void add_motor_num(int8_t motor_num);
-    
+
     // update the throttle input filter
     virtual void update_throttle_filter() = 0;
 
@@ -335,7 +338,7 @@ protected:
 
     // mask of what channels need to use SERVOn_MIN/MAX for output mapping
     uint32_t            _motor_pwm_range_mask;
-    
+
     // pass through variables
     float _roll_radio_passthrough;     // roll input from pilot in -1 ~ +1 range.  used for setup and providing servo feedback while landed
     float _pitch_radio_passthrough;    // pitch input from pilot in -1 ~ +1 range.  used for setup and providing servo feedback while landed
