@@ -27,10 +27,21 @@
 
 extern const AP_HAL::HAL& hal;
 
+// SBL hack for logging
+uint32_t lastLogTime = 0;
+uint32_t lastLogTime2 = 0;
+#define LOG_PERIOD 3000
+
 // consume vision pose estimate data and send to EKF. distances in meters
 // quality of -1 means failed, 0 means unknown, 1 is worst, 100 is best
 void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint32_t time_ms, float x, float y, float z, const Quaternion &attitude, float posErr, float angErr, uint8_t reset_counter, int8_t quality)
 {
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime > LOG_PERIOD) {
+        lastLogTime = now;
+        debug = true;
+    }
     const float scale_factor = _frontend.get_pos_scale();
     Vector3f pos{x * scale_factor, y * scale_factor, z * scale_factor};
     Quaternion att = attitude;
@@ -64,6 +75,10 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
     // record quality
     _quality = quality;
 
+    if(debug) {
+            gcs().send_text(MAV_SEVERITY_INFO, "SBL pose quality: %d", quality);
+    }
+
     // check for recent position reset
     bool consume = should_consume_sensor_data(true, reset_counter) && (_quality >= _frontend.get_quality_min());
     if (consume) {
@@ -77,7 +92,6 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
     float yaw;
     att.to_euler(roll, pitch, yaw);
 
-    bool debug = false;
     if(debug) {
         Quaternion ahrs_quat;
         if (!AP::ahrs().get_quaternion(ahrs_quat)) {
@@ -90,7 +104,7 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
 
             gcs().send_text(
                     MAV_SEVERITY_INFO,
-                    "VisOdom SBL: AHRS PYR (%d, %d, %d) vs my PYR (%d, %d, %d)",
+                    "V: AHRS PYR (%d, %d, %d) - (%d, %d, %d)",
                     (int) degrees(ahrsPitch),
                     (int) wrap_360(degrees(ahrsYaw)),
                     (int) degrees(ahrsRoll),
@@ -117,12 +131,22 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
 // quality of -1 means failed, 0 means unknown, 1 is worst, 100 is best
 void AP_VisualOdom_IntelT265::handle_vision_speed_estimate(uint64_t remote_time_us, uint32_t time_ms, const Vector3f &vel, uint8_t reset_counter, int8_t quality)
 {
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime2 > LOG_PERIOD) {
+        lastLogTime2 = now;
+        debug = true;
+    }
     // rotate velocity to align with vehicle
     Vector3f vel_corrected = vel;
     rotate_velocity(vel_corrected);
 
     // record quality
     _quality = quality;
+    if(debug) {
+            gcs().send_text(MAV_SEVERITY_INFO, "SBL speed quality: %d", quality);
+            gcs().send_text(MAV_SEVERITY_INFO, "V velocity: (%.2f, %.2f, %.2f)", vel_corrected.x, vel_corrected.y, vel_corrected.z);
+    }
 
     // check for recent position reset
     bool consume = should_consume_sensor_data(false, reset_counter) && (_quality >= _frontend.get_quality_min());
