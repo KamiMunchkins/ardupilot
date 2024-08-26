@@ -101,6 +101,7 @@ void Copter::init_ardupilot()
     rc().init();
 
     // sets up motors and output to escs
+    gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT RC OUT system");
     init_rc_out();
 
     // check if we should enter esc calibration mode
@@ -240,9 +241,9 @@ void Copter::init_ardupilot()
     // flag that initialisation has completed
     ap.initialised = true;
     if(debugSet2) {
-        gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT SUCCESS");
+        gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT SUCCESS system");
     } else {
-        gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT FAIL");
+        gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT FAIL system");
     }
 }
 
@@ -397,6 +398,7 @@ bool Copter::should_log(uint32_t mask)
  */
 void Copter::allocate_motors(void)
 {
+    gcs().send_text(MAV_SEVERITY_INFO,"SBL allocate motors");
     motors = new AP_Motors6DOF(copter.scheduler.get_loop_rate_hz());
     motors_var_info = AP_Motors6DOF::var_info;
     debugSet2 = true;

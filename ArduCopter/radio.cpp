@@ -41,6 +41,7 @@ void Copter::init_rc_in()
  // init_rc_out -- initialise motors
 void Copter::init_rc_out()
 {
+    gcs().send_text(MAV_SEVERITY_INFO,"SBL MOTORS INIT FROM RC OUT");
     motors->init((AP_Motors::motor_frame_class)g2.frame_class.get(), (AP_Motors::motor_frame_type)g.frame_type.get());
 
     // enable aux servos to cope with multiple output channels per motor
@@ -174,7 +175,7 @@ void Copter::set_throttle_zero_flag(int16_t throttle_control)
     uint32_t tnow_ms = millis();
 
     // if not using throttle interlock and non-zero throttle and not E-stopped,
-    // or using motor interlock and it's enabled, then motors are running, 
+    // or using motor interlock and it's enabled, then motors are running,
     // and we are flying. Immediately set as non-zero
     if ((!ap.using_interlock && (throttle_control > 0) && !SRV_Channels::get_emergency_stop()) ||
         (ap.using_interlock && motors->get_interlock()) ||

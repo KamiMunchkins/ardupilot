@@ -30,13 +30,17 @@ void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame
 {
     // SBL frame_class should be SUB_FRAME_CUSTOM
     // record requested frame class and type
+    gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init");
 
     _active_frame_class = frame_class;
     _active_frame_type = frame_type;
 
-    if (frame_class == MOTOR_FRAME_SCRIPTING_MATRIX) {
-        // if Scripting frame class, do nothing scripting must call its own dedicated init function
-        return;
+    // SBL DISABLE
+    if (false) {
+        if (frame_class == MOTOR_FRAME_SCRIPTING_MATRIX) {
+            // if Scripting frame class, do nothing scripting must call its own dedicated init function
+            return;
+        }
     }
 
     // setup the motors
@@ -50,6 +54,7 @@ void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame
 // dedicated init for lua scripting
 bool AP_MotorsMatrix::init(uint8_t expected_num_motors)
 {
+    gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init v2");
     if (_active_frame_class != MOTOR_FRAME_SCRIPTING_MATRIX) {
         // not the correct class
         return false;

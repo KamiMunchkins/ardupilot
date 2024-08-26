@@ -20,6 +20,12 @@
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Motors6DOF.h"
+#include <GCS_MAVLink/GCS.h>
+
+
+// SBL added this, everything else was hardcoded to 1500
+
+#define MOT_SPIN_MIN 1000
 
 extern const AP_HAL::HAL& hal;
 
@@ -121,8 +127,32 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
     AP_GROUPEND
 };
 
+bool AP_Motors6DOF::init(uint8_t expected_num_motors) {
+    gcs().send_text(MAV_SEVERITY_INFO,"SBL inside custom init func, expected motors %d", expected_num_motors);
+
+    // SBL hard-coded
+    int wantMotors = 12;
+    uint8_t num_motors = 0;
+    for(uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+        if (motor_enabled[i]) {
+            num_motors++;
+        }
+    }
+    set_initialised_ok(wantMotors == num_motors);
+
+    if (!initialised_ok()) {
+        gcs().send_text(MAV_SEVERITY_WARNING,"SBL init FAIL");
+        return false;
+    }
+    set_update_rate(_speed_hz);
+    gcs().send_text(MAV_SEVERITY_WARNING,"SBL init SUCCESS");
+
+    return true;
+}
+
 void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type frame_type)
 {
+    set_initialised_ok(false);
     debugSet = true;
     // remove existing motors
     for (int8_t i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
@@ -141,17 +171,25 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
     float noPitch = 0;
     float noYaw = 0;
 
-    float yawFactorCCW = 1.0;
-    float yawFactorCW = -1.0;
+    // these yaw factors tested and verified
+    float yawFactorCCW = -1.0;
+    float yawFactorCW = 1.0;
+    gcs().send_text(MAV_SEVERITY_WARNING,"SBL CUSTOM MOTOR SETUP");
 
+    // SBL CUSTOM MOTOR FRAME
     // top left
-    add_motor_raw_6dof(AP_MOTORS_MOT_1, 0.71, -0.71, noYaw, 1.0, noForward, noLateral, 1);
+    // should be spinning CCW
+
+    float pitchDown = 1.0;
+    float rollRight = 1.0;
+
+    add_motor_raw_6dof(AP_MOTORS_MOT_1, rollRight, pitchDown, noYaw, 1.0, noForward, noLateral, 1);
     // top right
-    add_motor_raw_6dof(AP_MOTORS_MOT_2, -0.71, -0.71, noYaw, 1.0, noForward, noLateral, 2);
+    add_motor_raw_6dof(AP_MOTORS_MOT_2, -rollRight, pitchDown, noYaw, 1.0, noForward, noLateral, 2);
     // bottom right
-    add_motor_raw_6dof(AP_MOTORS_MOT_3, -0.71, 0.71, noYaw, 1.0, noForward, noLateral, 3);
+    add_motor_raw_6dof(AP_MOTORS_MOT_3, -rollRight, -pitchDown, noYaw, 1.0, noForward, noLateral, 3);
     // bottom left
-    add_motor_raw_6dof(AP_MOTORS_MOT_4, 0.71, 0.71, noYaw, 1.0, noForward, noLateral, 4);
+    add_motor_raw_6dof(AP_MOTORS_MOT_4, rollRight, -pitchDown, noYaw, 1.0, noForward, noLateral, 4);
 
     // front right
     add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCW, 0.0, -1.0, noLateral, 5);
@@ -170,6 +208,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
     add_motor_raw_6dof(AP_MOTORS_MOT_11, noRoll, noPitch, yawFactorCW, 0.0, noForward, -1.0, 11);
     // right top
     add_motor_raw_6dof(AP_MOTORS_MOT_12, noRoll, noPitch, yawFactorCCW, 0.0, noForward, -1.0, 12);
+    set_initialised_ok(true);
 
     return;
 
@@ -270,16 +309,25 @@ void AP_Motors6DOF::output_min()
     // ToDo find a field to store the minimum pwm instead of hard coding 1500
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            rc_write(i, 1500);
+            rc_write(i, MOT_SPIN_MIN);
         }
     }
 }
 
 int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in) const
 {
+    int16_t minPwm = get_pwm_output_min();
+    if(thrust_in <= 0) {
+        return minPwm;
+    }
+    // SBL modified this.
+    int16_t interp_range = get_pwm_output_max() - get_pwm_output_min();
+    return (thrust_in * interp_range) + minPwm;
+    /*
     int16_t range_up = get_pwm_output_max() - 1500;
     int16_t range_down = 1500 - get_pwm_output_min();
     return 1500 + thrust_in * (thrust_in > 0 ? range_up : range_down);
+    */
 }
 
 void AP_Motors6DOF::output_to_motors()
@@ -293,7 +341,7 @@ void AP_Motors6DOF::output_to_motors()
         // set motor output based on thrust requests
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-                motor_out[i] = 1500;
+                motor_out[i] = MOT_SPIN_MIN;
             }
         }
         break;
@@ -301,7 +349,7 @@ void AP_Motors6DOF::output_to_motors()
         // sends output to motors when armed but not flying
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-                motor_out[i] = 1500;
+                motor_out[i] = MOT_SPIN_MIN;
             }
         }
         break;
@@ -352,7 +400,9 @@ void AP_Motors6DOF::output_armed_stabilizing()
         roll_thrust = (_roll_in + _roll_in_ff);
         pitch_thrust = (_pitch_in + _pitch_in_ff);
         yaw_thrust = (_yaw_in + _yaw_in_ff);
-        throttle_thrust = get_throttle_bidirectional();
+        // throttle_thrust = get_throttle_bidirectional();
+        const float compensation_gain = thr_lin.get_compensation_gain(); // compensation for battery voltage and altitude
+        throttle_thrust = get_throttle() * compensation_gain;
         forward_thrust = _forward_in;
         lateral_thrust = _lateral_in;
 
@@ -541,7 +591,10 @@ void AP_Motors6DOF::output_armed_stabilizing_vectored_6dof()
     roll_thrust = (_roll_in + _roll_in_ff);
     pitch_thrust = (_pitch_in + _pitch_in_ff);
     yaw_thrust = (_yaw_in + _yaw_in_ff);
-    throttle_thrust = get_throttle_bidirectional();
+    // throttle_thrust = get_throttle_bidirectional();
+    // SBL modified here
+    const float compensation_gain = thr_lin.get_compensation_gain(); // compensation for battery voltage and altitude
+    throttle_thrust = get_throttle() * compensation_gain;
     forward_thrust = _forward_in;
     lateral_thrust = _lateral_in;
 

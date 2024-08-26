@@ -12,6 +12,9 @@
 class AP_Motors6DOF : public AP_MotorsMatrix {
 public:
 
+    // if the expected number of motors have been setup then set as initalized
+    bool init(uint8_t expected_num_motors) override;
+
     AP_Motors6DOF(uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
         AP_MotorsMatrix(speed_hz) {
         AP_Param::setup_object_defaults(this, var_info);
