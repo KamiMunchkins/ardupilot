@@ -22,6 +22,19 @@
 #include "AP_Motors6DOF.h"
 #include <GCS_MAVLink/GCS.h>
 
+uint32_t lastLogTime6 = 0;
+#define LOG_PERIOD 3000
+        /*
+        bool debug = false;
+        uint32_t now = AP_HAL::millis();
+        if(now - lastLogTime6 > LOG_PERIOD) {
+            lastLogTime6 = now;
+            debug = true;
+        }
+        if(debug) {
+                gcs().send_text(MAV_SEVERITY_INFO, "SBL forward_in was %.2f", _forward_in);
+        }
+        */
 
 // SBL added this, everything else was hardcoded to 1500
 
@@ -182,6 +195,8 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
 
     float pitchDown = 1.0;
     float rollRight = 1.0;
+    float forward = 1.0;
+    float lateral = 1.0;
 
     add_motor_raw_6dof(AP_MOTORS_MOT_1, rollRight, pitchDown, noYaw, 1.0, noForward, noLateral, 1);
     // top right
@@ -192,22 +207,22 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
     add_motor_raw_6dof(AP_MOTORS_MOT_4, rollRight, -pitchDown, noYaw, 1.0, noForward, noLateral, 4);
 
     // front right
-    add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCW, 0.0, -1.0, noLateral, 5);
+    add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCW, 0.0, -forward, noLateral, 5);
     // front left
-    add_motor_raw_6dof(AP_MOTORS_MOT_6, noRoll, noPitch, yawFactorCCW, 0.0, -1.0, noLateral, 6);
+    add_motor_raw_6dof(AP_MOTORS_MOT_6, noRoll, noPitch, yawFactorCCW, 0.0, -forward, noLateral, 6);
     // back left
-    add_motor_raw_6dof(AP_MOTORS_MOT_7, noRoll, noPitch, yawFactorCW, 0.0, 1.0, noLateral, 7);
+    add_motor_raw_6dof(AP_MOTORS_MOT_7, noRoll, noPitch, yawFactorCW, 0.0, forward, noLateral, 7);
     // back right
-    add_motor_raw_6dof(AP_MOTORS_MOT_8, noRoll, noPitch, yawFactorCCW, 0.0, 1.0, noLateral, 8);
+    add_motor_raw_6dof(AP_MOTORS_MOT_8, noRoll, noPitch, yawFactorCCW, 0.0, forward, noLateral, 8);
 
     // left top
-    add_motor_raw_6dof(AP_MOTORS_MOT_9, noRoll, noPitch, yawFactorCW, 0.0, noForward, 1.0, 9);
+    add_motor_raw_6dof(AP_MOTORS_MOT_9, noRoll, noPitch, yawFactorCW, 0.0, noForward, lateral, 9);
     // left bottom
-    add_motor_raw_6dof(AP_MOTORS_MOT_10, noRoll, noPitch, yawFactorCCW, 0.0, noForward, 1.0, 10);
+    add_motor_raw_6dof(AP_MOTORS_MOT_10, noRoll, noPitch, yawFactorCCW, 0.0, noForward, lateral, 10);
     // right bottom
-    add_motor_raw_6dof(AP_MOTORS_MOT_11, noRoll, noPitch, yawFactorCW, 0.0, noForward, -1.0, 11);
+    add_motor_raw_6dof(AP_MOTORS_MOT_11, noRoll, noPitch, yawFactorCW, 0.0, noForward, -lateral, 11);
     // right top
-    add_motor_raw_6dof(AP_MOTORS_MOT_12, noRoll, noPitch, yawFactorCCW, 0.0, noForward, -1.0, 12);
+    add_motor_raw_6dof(AP_MOTORS_MOT_12, noRoll, noPitch, yawFactorCCW, 0.0, noForward, -lateral, 12);
     set_initialised_ok(true);
 
     return;
@@ -384,6 +399,7 @@ float AP_Motors6DOF::get_current_limit_max_throttle()
 // ToDo calculate headroom for rpy to be added for stabilization during full throttle/forward/lateral commands
 void AP_Motors6DOF::output_armed_stabilizing()
 {
+    // SBL output case 3
     if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED) {
         output_armed_stabilizing_vectored();
     } else if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED_6DOF) {
@@ -394,12 +410,14 @@ void AP_Motors6DOF::output_armed_stabilizing()
         float   pitch_thrust;               // pitch thrust input value, +/- 1.0
         float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
         float   throttle_thrust;            // throttle thrust input value, +/- 1.0
+        // NOTE forward and lateral thrust are actually +/- 0.5
         float   forward_thrust;             // forward thrust input value, +/- 1.0
         float   lateral_thrust;             // lateral thrust input value, +/- 1.0
 
         roll_thrust = (_roll_in + _roll_in_ff);
         pitch_thrust = (_pitch_in + _pitch_in_ff);
         yaw_thrust = (_yaw_in + _yaw_in_ff);
+
         // throttle_thrust = get_throttle_bidirectional();
         const float compensation_gain = thr_lin.get_compensation_gain(); // compensation for battery voltage and altitude
         throttle_thrust = get_throttle() * compensation_gain;
@@ -426,6 +444,18 @@ void AP_Motors6DOF::output_armed_stabilizing()
             limit.throttle_upper = true;
         }
 
+        // SBL hard-coded
+        // This is to elminate motor saturation. Max forward_in is 0.5,
+        // so limiting to 0.5 prevents some motors getting saturated while others are not.
+        if(yaw_thrust > 0.5) {
+            yaw_thrust = 0.5;
+            limit.yaw = true;
+        } else if (yaw_thrust < -0.5) {
+            yaw_thrust = -0.5;
+            limit.yaw = true;
+        }
+
+
         // calculate roll, pitch and yaw for each motor
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
@@ -435,14 +465,30 @@ void AP_Motors6DOF::output_armed_stabilizing()
 
             }
         }
+        // SBL need to modify here. What's happening is that we have poor yaw control because some motors on opposing side of the
+        // running motors are negative, and therefore yaw has to overcome this negative value before they even activate.
+        // 2 cases to account for:
+        // 1. Yaw isn't activating if one side of motors is running
+        //    This can be fixed by setting forward_thrust to 0 if it is negative when multiplied by forward factor
+        // 2. Forward and lateral max out at 1500 PWM.
+        //
+
 
         // calculate linear command for each motor
         // linear factors should be 0.0 or 1.0 for now
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
+                float local_forward_thrust = forward_thrust;
+                float local_lateral_thrust = lateral_thrust;
+                if(local_forward_thrust * _forward_factor[i] < 0) {
+                    local_forward_thrust = 0;
+                }
+                if (local_lateral_thrust * _lateral_factor[i] < 0) {
+                    local_lateral_thrust = 0;
+                }
                 linear_out[i] = throttle_thrust * _throttle_factor[i] +
-                                forward_thrust * _forward_factor[i] +
-                                lateral_thrust * _lateral_factor[i];
+                                local_forward_thrust * _forward_factor[i] +
+                                local_lateral_thrust * _lateral_factor[i];
             }
         }
 
@@ -495,6 +541,7 @@ void AP_Motors6DOF::output_armed_stabilizing()
 // ToDo calculate headroom for rpy to be added for stabilization during full throttle/forward/lateral commands
 void AP_Motors6DOF::output_armed_stabilizing_vectored()
 {
+    // SBL output case 1 UNUSED
     uint8_t i;                          // general purpose counter
     float   roll_thrust;                // roll thrust input value, +/- 1.0
     float   pitch_thrust;               // pitch thrust input value, +/- 1.0
@@ -580,6 +627,7 @@ void AP_Motors6DOF::output_armed_stabilizing_vectored()
 // TODO: find a global solution for managing saturation that works for all vehicles
 void AP_Motors6DOF::output_armed_stabilizing_vectored_6dof()
 {
+    // SBL output case 2 UNUSED
     uint8_t i;                          // general purpose counter
     float   roll_thrust;                // roll thrust input value, +/- 1.0
     float   pitch_thrust;               // pitch thrust input value, +/- 1.0
