@@ -1,16 +1,27 @@
 // User specific config file.  Any items listed in config.h can be overridden here.
+// look in ./Tools/scripts/build_options.py for actual list
 
 // uncomment the lines below to disable features (flash sizes listed are for APM2 boards and will underestimate savings on Pixhawk and other boards)
 //#define LOGGING_ENABLED       DISABLED            // disable logging to save 11K of flash space
-//#define MOUNT                 DISABLED            // disable the camera gimbal to save 8K of flash space
-//#define AUTOTUNE_ENABLED      DISABLED            // disable the auto tune functionality to save 7k of flash
+// disable the camera gimbal to save 8K of flash space
+// #define MOUNT                 DISABLED
+#define AP_CAMERA_MOUNT_ENABLED DISABLED
+#define AP_CAMERA_ENABLED DISABLED
+#define AP_CAMERA_MAVLINK_ENABLED DISABLED
+#define AP_CAMERA_RELAY_ENABLED DISABLED
+#define AP_CAMERA_SERVO_ENABLED DISABLED
+#define AP_CAMERA_BACKEND_DEFAULT_ENABLED DISABLED
+// disable the auto tune functionality to save 7k of flash
+#define AUTOTUNE_ENABLED      DISABLED
 //#define RANGEFINDER_ENABLED   DISABLED            // disable rangefinder to save 1k of flash
 //#define AC_AVOID_ENABLED      DISABLED            // disable stop-at-fence library
 //#define AC_OAPATHPLANNER_ENABLED DISABLED         // disable path planning around obstacles
-//#define PARACHUTE             DISABLED            // disable parachute release to save 1k of flash
+// disable parachute release to save 1k of flash
+#define PARACHUTE             DISABLED
 //#define NAV_GUIDED            DISABLED            // disable external navigation computer ability to control vehicle through MAV_CMD_NAV_GUIDED mission commands
 //#define STATS_ENABLED         DISABLED            // disable statistics support
-//#define MODE_ACRO_ENABLED     DISABLED            // disable acrobatic mode support
+// disable acrobatic mode support
+#define MODE_ACRO_ENABLED     DISABLED
 //#define MODE_AUTO_ENABLED     DISABLED            // disable auto mode support
 //#define MODE_BRAKE_ENABLED    DISABLED            // disable brake mode support
 //#define MODE_CIRCLE_ENABLED   DISABLED            // disable circle mode support
