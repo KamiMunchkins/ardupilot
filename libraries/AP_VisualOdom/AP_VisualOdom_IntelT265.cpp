@@ -75,7 +75,7 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
     // record quality
     _quality = quality;
 
-    if(debug) {
+    if(debug && false) {
             gcs().send_text(MAV_SEVERITY_INFO, "SBL pose quality: %d", quality);
     }
 
@@ -92,7 +92,7 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
     float yaw;
     att.to_euler(roll, pitch, yaw);
 
-    if(debug) {
+    if(debug && false) {
         Quaternion ahrs_quat;
         if (!AP::ahrs().get_quaternion(ahrs_quat)) {
             gcs().send_text(MAV_SEVERITY_WARNING, "VisOdom SBL: could not fetch AHRS quat");
@@ -143,7 +143,7 @@ void AP_VisualOdom_IntelT265::handle_vision_speed_estimate(uint64_t remote_time_
 
     // record quality
     _quality = quality;
-    if(debug) {
+    if(debug && false) {
             gcs().send_text(MAV_SEVERITY_INFO, "SBL speed quality: %d", quality);
             gcs().send_text(MAV_SEVERITY_INFO, "V velocity: (%.2f, %.2f, %.2f)", vel_corrected.x, vel_corrected.y, vel_corrected.z);
     }

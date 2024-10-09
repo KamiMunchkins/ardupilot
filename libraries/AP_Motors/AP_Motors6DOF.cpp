@@ -435,8 +435,15 @@ void AP_Motors6DOF::output_armed_stabilizing()
         limit.throttle_upper = false;
 
         // sanity check throttle is above zero and below current limited throttle
+        /*
         if (throttle_thrust <= -_throttle_thrust_max) {
             throttle_thrust = -_throttle_thrust_max;
+            limit.throttle_lower = true;
+        }
+        */
+        // SBL MODIFYING THIS CASE BECAUSE FOR NON-REVERSIBLE MOTORS
+        if (throttle_thrust <= 0) {
+            throttle_thrust = 0;
             limit.throttle_lower = true;
         }
         if (throttle_thrust >= _throttle_thrust_max) {

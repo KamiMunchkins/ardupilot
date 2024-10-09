@@ -1,4 +1,19 @@
 #include "Copter.h"
+#include <GCS_MAVLink/GCS.h>
+
+uint32_t lastLogTime7 = 0;
+uint32_t lastLogTime8 = 0;
+#define LOG_PERIOD 3000
+#define LOG_PERIOD2 2500
+/*
+    // SBL SBL SBL RETURN
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime8 > LOG_PERIOD2) {
+        lastLogTime8 = now;
+        debug = true;
+    }
+*/
 
 // Code to detect a crash main ArduCopter code
 #define LAND_CHECK_ANGLE_ERROR_DEG  30.0f       // maximum angle error to be considered landing
@@ -34,6 +49,8 @@ void Copter::update_land_and_crash_detectors()
 // called at MAIN_LOOP_RATE
 void Copter::update_land_detector()
 {
+
+
     // land detector can not use the following sensors because they are unreliable during landing
     // barometer altitude :                 ground effect can cause errors larger than 4m
     // EKF vertical velocity or altitude :  poor barometer and large acceleration from ground impact
@@ -154,7 +171,7 @@ void Copter::set_land_complete(bool b)
 
     // tell AHRS flying state
     set_likely_flying(!b);
-    
+
     // trigger disarm-on-land if configured
     bool disarm_on_land_configured = (g.throttle_behavior & THR_BEHAVE_DISARM_ON_LAND_DETECT) != 0;
     const bool mode_disarms_on_land = flightmode->allows_arming(AP_Arming::Method::LANDING) && !flightmode->has_manual_throttle();
