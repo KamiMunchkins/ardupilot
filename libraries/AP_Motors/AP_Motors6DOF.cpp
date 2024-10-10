@@ -221,13 +221,13 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
 
     if(LATERAL_MOTORS_CONFIG4) {
         // bottom
-        add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCW, 0.0, noForward, -lateral, 5);
+        add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCCW, 0.0, noForward, lateral, 5);
         // left
         add_motor_raw_6dof(AP_MOTORS_MOT_6, noRoll, noPitch, yawFactorCW, 0.0, forward, noLateral, 6);
         // top
         add_motor_raw_6dof(AP_MOTORS_MOT_7, noRoll, noPitch, yawFactorCW, 0.0, noForward, lateral, 7);
         // right
-        add_motor_raw_6dof(AP_MOTORS_MOT_8, noRoll, noPitch, yawFactorCW, 0.0, -forward, noLateral, 8);
+        add_motor_raw_6dof(AP_MOTORS_MOT_8, noRoll, noPitch, yawFactorCCW, 0.0, forward, noLateral, 8);
     } else {
         // front right
         add_motor_raw_6dof(AP_MOTORS_MOT_5, noRoll, noPitch, yawFactorCW, 0.0, -forward, noLateral, 5);
