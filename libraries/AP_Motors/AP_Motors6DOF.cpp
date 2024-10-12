@@ -348,6 +348,7 @@ void AP_Motors6DOF::output_min()
     // fill the motor_out[] array for HIL use and send minimum value to each motor
     // ToDo find a field to store the minimum pwm instead of hard coding 1500
     // SBL redundant code
+    // NOTE rc_write() usage vs motor_out[i] = ; this tripped me up earlier
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
             if(i < 4) {
@@ -397,15 +398,15 @@ void AP_Motors6DOF::output_to_motors()
             if (motor_enabled[i]) {
                 if(i < 4) {
                   if(LIFTING_MOTORS_REVERSIBLE) {
-                    rc_write(i, MOT_SPIN_NEUTRAL);
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
                   } else {
-                    rc_write(i, MOT_SPIN_MIN);
+                    motor_out[i] = MOT_SPIN_MIN;
                   }
                 } else {
                   if(LATERAL_MOTORS_CONFIG4) {
-                    rc_write(i, MOT_SPIN_NEUTRAL);
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
                   } else {
-                    rc_write(i, MOT_SPIN_MIN);
+                    motor_out[i] = MOT_SPIN_MIN;
                   }
                 }
             }
@@ -418,15 +419,15 @@ void AP_Motors6DOF::output_to_motors()
             if (motor_enabled[i]) {
                 if(i < 4) {
                   if(LIFTING_MOTORS_REVERSIBLE) {
-                    rc_write(i, MOT_SPIN_NEUTRAL);
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
                   } else {
-                    rc_write(i, MOT_SPIN_MIN);
+                    motor_out[i] = MOT_SPIN_MIN;
                   }
                 } else {
                   if(LATERAL_MOTORS_CONFIG4) {
-                    rc_write(i, MOT_SPIN_NEUTRAL);
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
                   } else {
-                    rc_write(i, MOT_SPIN_MIN);
+                    motor_out[i] = MOT_SPIN_MIN;
                   }
                 }
             }
