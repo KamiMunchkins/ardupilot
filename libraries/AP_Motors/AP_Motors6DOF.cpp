@@ -44,6 +44,7 @@ uint32_t lastLogTime6 = 0;
 // motors.
 #define LATERAL_MOTORS_CONFIG4 true
 
+// TODO maybe replace with get_pwm_output_min
 #define MOT_SPIN_MIN 1000
 #define MOT_SPIN_NEUTRAL 1500
 

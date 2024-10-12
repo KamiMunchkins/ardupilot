@@ -8,6 +8,10 @@
 // motor test definitions
 #define MOTOR_TEST_TIMEOUT_SEC          600     // max timeout is 10 minutes (600 seconds)
 
+#define LIFTING_MOTORS_REVERSIBLE true
+#define LATERAL_MOTORS_CONFIG4 true
+#define MOT_SPIN_NEUTRAL 1500
+
 static uint32_t motor_test_start_ms;        // system time the motor test began
 static uint32_t motor_test_timeout_ms;      // test will timeout this many milliseconds after the motor_test_start_ms
 static uint8_t motor_test_seq;              // motor sequence number of motor being tested
@@ -61,9 +65,22 @@ void Copter::motor_test_output()
                 // sanity check motor_test_throttle value
 #if FRAME_CONFIG != HELI_FRAME
                 if (motor_test_throttle_value <= 100) {
-                    int16_t pwm_min = motors->get_pwm_output_min();
-                    int16_t pwm_max = motors->get_pwm_output_max();
-                    pwm = (int16_t) (pwm_min + (pwm_max - pwm_min) * motor_test_throttle_value * 1e-2f);
+                    bool reversible = false;
+                    if(motor_test_seq < 4 && LIFTING_MOTORS_REVERSIBLE) {
+                        reversible = true;
+                    } else if (motor_test_seq >= 4 && LATERAL_MOTORS_CONFIG4) {
+                        reversible = true;
+                    }
+
+                    if(reversible) {
+                        float float_thrust = motor_test_throttle_value * 1e-2f; // * .01
+                        int16_t range_up = motors->get_pwm_output_max() - MOT_SPIN_NEUTRAL;
+                        pwm = (int16_t) MOT_SPIN_NEUTRAL + float_thrust * (float_thrust * range_up);
+                    } else {
+                        int16_t pwm_min = motors->get_pwm_output_min();
+                        int16_t pwm_max = motors->get_pwm_output_max();
+                        pwm = (int16_t) (pwm_min + (pwm_max - pwm_min) * motor_test_throttle_value * 1e-2f);
+                    }
                 }
 #endif
                 break;
@@ -143,6 +160,9 @@ MAV_RESULT Copter::mavlink_motor_test_start(const GCS_MAVLINK &gcs_chan, uint8_t
 {
     // SBL hard-coded this value.
     motor_count = 12;
+    if(LATERAL_MOTORS_CONFIG4) {
+        motor_count = 8;
+    }
     if (motor_count == 0) {
         motor_count = 1;
     }
