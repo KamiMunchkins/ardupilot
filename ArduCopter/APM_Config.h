@@ -21,7 +21,7 @@
 //#define NAV_GUIDED            DISABLED            // disable external navigation computer ability to control vehicle through MAV_CMD_NAV_GUIDED mission commands
 //#define STATS_ENABLED         DISABLED            // disable statistics support
 // disable acrobatic mode support
-#define MODE_ACRO_ENABLED     DISABLED
+//#define MODE_ACRO_ENABLED     DISABLED
 //#define MODE_AUTO_ENABLED     DISABLED            // disable auto mode support
 //#define MODE_BRAKE_ENABLED    DISABLED            // disable brake mode support
 //#define MODE_CIRCLE_ENABLED   DISABLED            // disable circle mode support
