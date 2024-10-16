@@ -37,6 +37,10 @@ void ModeSport::run()
     float target_roll_rate = channel_roll->get_control_in() * g2.command_model_acro_rp.get_rate() * 100.0 / ROLL_PITCH_YAW_INPUT_MAX;
     float target_pitch_rate = channel_pitch->get_control_in() * g2.command_model_acro_rp.get_rate() * 100.0 / ROLL_PITCH_YAW_INPUT_MAX;
 
+    // SBL CUSTOM HACKS
+    target_roll_rate = 0;
+    target_pitch_rate = 0;
+
     // get attitude targets
     const Vector3f att_target = attitude_control->get_att_target_euler_cd();
 
@@ -121,6 +125,10 @@ void ModeSport::run()
 
     // run the vertical position controller and set output throttle
     pos_control->update_z_controller();
+
+    // SBL CUSTOM HACK
+    motors->set_forward(-0.5 * channel_pitch->norm_input_dz());
+    motors->set_lateral(0.5 * channel_roll->norm_input_dz());
 }
 
 #endif

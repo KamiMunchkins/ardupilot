@@ -67,6 +67,9 @@ void ModeAcro::run()
 
     // output pilot's throttle without angle boost
     attitude_control->set_throttle_out(pilot_desired_throttle, false, copter.g.throttle_filt);
+    // SBL CUSTOM HACK
+    motors->set_forward(-0.5 * channel_pitch->norm_input_dz());
+    motors->set_lateral(0.5 * channel_roll->norm_input_dz());
 }
 
 bool ModeAcro::init(bool ignore_checks)
@@ -104,6 +107,10 @@ float ModeAcro::throttle_hover() const
 // inputs are -1 to 1 and the function returns desired angle rates in centi-degrees-per-second
 void ModeAcro::get_pilot_desired_angle_rates(float roll_in, float pitch_in, float yaw_in, float &roll_out, float &pitch_out, float &yaw_out)
 {
+    // SBL CUSTOM HACK
+    roll_in = 0;
+    pitch_in = 0;
+
     float rate_limit;
     Vector3f rate_ef_level_cd, rate_bf_level_cd, rate_bf_request_cd;
 
@@ -117,7 +124,7 @@ void ModeAcro::get_pilot_desired_angle_rates(float roll_in, float pitch_in, floa
     }
 
     // calculate roll, pitch rate requests
-    
+
     // roll expo
     rate_bf_request_cd.x = g2.command_model_acro_rp.get_rate() * 100.0 * input_expo(roll_in, g2.command_model_acro_rp.get_expo());
 
