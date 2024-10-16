@@ -469,10 +469,13 @@ float AP_Motors6DOF::get_current_limit_max_throttle()
 void AP_Motors6DOF::output_armed_stabilizing()
 {
     // SBL output case 3
-    if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED) {
-        output_armed_stabilizing_vectored();
-    } else if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED_6DOF) {
-        output_armed_stabilizing_vectored_6dof();
+    if(false) {
+        // SBL DELETE THESE CASES
+        if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED) {
+            output_armed_stabilizing_vectored();
+        } else if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED_6DOF) {
+            output_armed_stabilizing_vectored_6dof();
+        }
     } else {
         uint8_t i;                          // general purpose counter
         float   roll_thrust;                // roll thrust input value, +/- 1.0

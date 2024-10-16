@@ -1058,7 +1058,7 @@ public:
     bool limit_check();
 
     bool is_taking_off() const override;
-    
+
     bool set_speed_xy(float speed_xy_cms) override;
     bool set_speed_up(float speed_up_cms) override;
     bool set_speed_down(float speed_down_cms) override;
@@ -1800,7 +1800,7 @@ protected:
 };
 #endif
 
-class ModeZigZag : public Mode {        
+class ModeZigZag : public Mode {
 
 public:
     ModeZigZag(void);
@@ -1941,7 +1941,7 @@ private:
         FLARE,
         TOUCH_DOWN,
         BAIL_OUT } phase_switch;
-        
+
     enum class Navigation_Decision {
         USER_CONTROL_STABILISED,
         STRAIGHT_AHEAD,
