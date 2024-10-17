@@ -22,7 +22,11 @@
 #include "AP_Motors6DOF.h"
 #include <GCS_MAVLink/GCS.h>
 
+#define LATERAL_MOTORS_CONFIG4 true
+#define LIFTING_MOTORS_REVERSIBLE true
+
 uint32_t lastLogTime6 = 0;
+#define DEAD_BAND 0.05
 #define LOG_PERIOD 3000
         /*
         bool debug = false;
@@ -39,10 +43,8 @@ uint32_t lastLogTime6 = 0;
 // SBL added this, everything else was hardcoded to 1500
 
 // reversible quad motors for a balloon so we can for pitching down
-#define LIFTING_MOTORS_REVERSIBLE true
 // config4 vs config8. A config4 setup means we need to yaw by reversing the
 // motors.
-#define LATERAL_MOTORS_CONFIG4 true
 
 // TODO maybe replace with get_pwm_output_min
 #define MOT_SPIN_MIN 1000
@@ -378,6 +380,9 @@ int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in, bool reversible) cons
         }
         int16_t interp_range = get_pwm_output_max() - get_pwm_output_min();
         return (thrust_in * interp_range) + minPwm;
+    }
+    if(abs(thrust_in) <= DEAD_BAND) {
+        thrust_in = 0;
     }
     int16_t range_up = get_pwm_output_max() - MOT_SPIN_NEUTRAL;
     int16_t range_down = MOT_SPIN_NEUTRAL - get_pwm_output_min();
