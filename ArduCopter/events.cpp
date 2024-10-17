@@ -43,35 +43,43 @@ void Copter::failsafe_radio_on_event()
             desired_action = FailsafeAction::LAND;
     }
 
-    // Conditions to deviate from FS_THR_ENABLE selection and send specific GCS warning
-    if (should_disarm_on_failsafe()) {
+    // SBL always disarm motors entirely for our balloon aircraft
+    if(true) {
         // should immediately disarm when we're on the ground
         announce_failsafe("Radio", "Disarming");
         arming.disarm(AP_Arming::Method::RADIOFAILSAFE);
         desired_action = FailsafeAction::NONE;
-
-    } else if (flightmode->is_landing() && ((battery.has_failsafed() && battery.get_highest_failsafe_priority() <= FAILSAFE_LAND_PRIORITY))) {
-        // Allow landing to continue when battery failsafe requires it (not a user option)
-        announce_failsafe("Radio + Battery", "Continuing Landing");
-        desired_action = FailsafeAction::LAND;
-
-    } else if (flightmode->is_landing() && failsafe_option(FailsafeOption::CONTINUE_IF_LANDING)) {
-        // Allow landing to continue when FS_OPTIONS is set to continue landing
-        announce_failsafe("Radio", "Continuing Landing");
-        desired_action = FailsafeAction::LAND;
-
-    } else if (flightmode->mode_number() == Mode::Number::AUTO && failsafe_option(FailsafeOption::RC_CONTINUE_IF_AUTO)) {
-        // Allow mission to continue when FS_OPTIONS is set to continue mission
-        announce_failsafe("Radio", "Continuing Auto");
-        desired_action = FailsafeAction::NONE;
-
-    } else if ((flightmode->in_guided_mode()) && failsafe_option(FailsafeOption::RC_CONTINUE_IF_GUIDED)) {
-        // Allow guided mode to continue when FS_OPTIONS is set to continue in guided mode
-        announce_failsafe("Radio", "Continuing Guided Mode");
-        desired_action = FailsafeAction::NONE;
-
     } else {
-        announce_failsafe("Radio");
+        // Conditions to deviate from FS_THR_ENABLE selection and send specific GCS warning
+        if (should_disarm_on_failsafe()) {
+            // should immediately disarm when we're on the ground
+            announce_failsafe("Radio", "Disarming");
+            arming.disarm(AP_Arming::Method::RADIOFAILSAFE);
+            desired_action = FailsafeAction::NONE;
+
+        } else if (flightmode->is_landing() && ((battery.has_failsafed() && battery.get_highest_failsafe_priority() <= FAILSAFE_LAND_PRIORITY))) {
+            // Allow landing to continue when battery failsafe requires it (not a user option)
+            announce_failsafe("Radio + Battery", "Continuing Landing");
+            desired_action = FailsafeAction::LAND;
+
+        } else if (flightmode->is_landing() && failsafe_option(FailsafeOption::CONTINUE_IF_LANDING)) {
+            // Allow landing to continue when FS_OPTIONS is set to continue landing
+            announce_failsafe("Radio", "Continuing Landing");
+            desired_action = FailsafeAction::LAND;
+
+        } else if (flightmode->mode_number() == Mode::Number::AUTO && failsafe_option(FailsafeOption::RC_CONTINUE_IF_AUTO)) {
+            // Allow mission to continue when FS_OPTIONS is set to continue mission
+            announce_failsafe("Radio", "Continuing Auto");
+            desired_action = FailsafeAction::NONE;
+
+        } else if ((flightmode->in_guided_mode()) && failsafe_option(FailsafeOption::RC_CONTINUE_IF_GUIDED)) {
+            // Allow guided mode to continue when FS_OPTIONS is set to continue in guided mode
+            announce_failsafe("Radio", "Continuing Guided Mode");
+            desired_action = FailsafeAction::NONE;
+
+        } else {
+            announce_failsafe("Radio");
+        }
     }
 
     // Call the failsafe action handler
