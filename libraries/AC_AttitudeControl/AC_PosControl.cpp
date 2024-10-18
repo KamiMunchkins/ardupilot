@@ -766,6 +766,9 @@ void AC_PosControl::init_z_controller_stopping_point()
 ///     This function decays the output acceleration by 95% every half second to achieve a smooth transition to zero requested acceleration.
 void AC_PosControl::relax_z_controller(float throttle_setting)
 {
+    if(LIFTING_MOTORS_REVERSIBLE && throttle_setting == 0.0) {
+        throttle_setting = 0.5;
+    }
     // Initialise the position controller to the current position, velocity and acceleration.
     init_z_controller();
 

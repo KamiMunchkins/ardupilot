@@ -194,7 +194,7 @@ void ModeAcro::get_pilot_desired_angle_rates(float roll_in, float pitch_in, floa
 
             // Calculate rate limit to prevent change of rate through inverted
             rate_limit = fabsf(fabsf(rate_bf_request_cd.z)-fabsf(rate_bf_level_cd.z));
-            rate_bf_request_cd.z += rate_bf_level_cd.z;
+            rate_bf_request_cd.z += rate_bf_level_cd.z * ACRO_YAW_GAIN;
             rate_bf_request_cd.z = constrain_float(rate_bf_request_cd.z, -rate_limit, rate_limit);
         }
     }

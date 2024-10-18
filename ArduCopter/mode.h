@@ -3,6 +3,9 @@
 #include "Copter.h"
 #include <AP_Math/chirp.h>
 #include <AP_ExternalControl/AP_ExternalControl_config.h> // TODO why is this needed if Copter.h includes this
+
+#define ACRO_YAW_GAIN 5.0
+
 class Parameters;
 class ParametersG2;
 
@@ -1519,6 +1522,7 @@ public:
 
     bool init(bool ignore_checks) override;
     void run() override;
+    void run_OBSOLETE();
 
     bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
@@ -1532,6 +1536,7 @@ protected:
 
     const char *name() const override { return "SPORT"; }
     const char *name4() const override { return "SPRT"; }
+    void get_pilot_desired_angle_rates(float roll_in, float pitch_in, float yaw_in, float &roll_out, float &pitch_out, float &yaw_out);
 
 private:
 
