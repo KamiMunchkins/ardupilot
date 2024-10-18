@@ -7,6 +7,7 @@
 #include <AP_Scheduler/AP_Scheduler.h>
 
 extern const AP_HAL::HAL& hal;
+#define LIFTING_MOTORS_REVERSIBLE true
 
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
  // default gains for Plane
@@ -654,7 +655,7 @@ void AC_PosControl::update_xy_controller()
 
     const Vector2f &curr_vel = _inav.get_velocity_xy_cms();
     Vector2f accel_target = _pid_vel_xy.update_all(_vel_target.xy(), curr_vel, _dt, _limit_vector.xy());
-    
+
     // acceleration to correct for velocity error and scale PID output to compensate for optical flow measurement induced EKF noise
     accel_target *= ahrsControlScaleXY;
 
@@ -669,7 +670,7 @@ void AC_PosControl::update_xy_controller()
     // limit acceleration using maximum lean angles
     float angle_max = MIN(_attitude_control.get_althold_lean_angle_max_cd(), get_lean_angle_max_cd());
     float accel_max = angle_to_accel(angle_max * 0.01) * 100;
-    // Define the limit vector before we constrain _accel_target 
+    // Define the limit vector before we constrain _accel_target
     _limit_vector.xy() = _accel_target.xy();
     if (!limit_accel_xy(_vel_desired.xy(), _accel_target.xy(), accel_max)) {
         // _accel_target was not limited so we can zero the xy limit vector
@@ -996,6 +997,13 @@ void AC_PosControl::update_z_controller()
         thr_out += _pid_accel_z.get_ff() * 0.001f;
     }
     thr_out += _motors.get_throttle_hover();
+
+    if(LIFTING_MOTORS_REVERSIBLE) {
+        const float thr_mid = 0.5;
+        if(_accel_target.z > 0 && thr_out < thr_mid) {
+            thr_out = thr_mid;
+        }
+    }
 
     // Actuator commands
 
