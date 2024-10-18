@@ -659,7 +659,7 @@ void GCS_MAVLINK_Copter::send_banner()
         return;
     }
     char frame_and_type_string[30];
-    send_text(MAV_SEVERITY_INFO, "SBL inside send_banner");
+    // send_text(MAV_SEVERITY_INFO, "SBL inside send_banner");
     copter.motors->get_frame_and_type_string(frame_and_type_string, ARRAY_SIZE(frame_and_type_string));
     send_text(MAV_SEVERITY_INFO, "%s", frame_and_type_string);
 }

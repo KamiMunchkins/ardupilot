@@ -151,7 +151,7 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
 };
 
 bool AP_Motors6DOF::init(uint8_t expected_num_motors) {
-    gcs().send_text(MAV_SEVERITY_INFO,"SBL inside custom init func, expected motors %d", expected_num_motors);
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside custom init func, expected motors %d", expected_num_motors);
 
     // SBL hard-coded
     int wantMotors = 12;
@@ -167,11 +167,11 @@ bool AP_Motors6DOF::init(uint8_t expected_num_motors) {
     set_initialised_ok(wantMotors == num_motors);
 
     if (!initialised_ok()) {
-        gcs().send_text(MAV_SEVERITY_WARNING,"SBL init FAIL");
+        //gcs().send_text(MAV_SEVERITY_WARNING,"SBL init FAIL");
         return false;
     }
     set_update_rate(_speed_hz);
-    gcs().send_text(MAV_SEVERITY_WARNING,"SBL init SUCCESS");
+    //gcs().send_text(MAV_SEVERITY_WARNING,"SBL init SUCCESS");
 
     return true;
 }
@@ -203,7 +203,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
     // these yaw factors tested and verified
     float yawFactorCCW = -1.0;
     float yawFactorCW = 1.0;
-    gcs().send_text(MAV_SEVERITY_WARNING,"SBL CUSTOM MOTOR SETUP");
+    //gcs().send_text(MAV_SEVERITY_WARNING,"SBL CUSTOM MOTOR SETUP");
 
     // SBL CUSTOM MOTOR FRAME
     // top left
