@@ -22,8 +22,7 @@
 #include "AP_Motors6DOF.h"
 #include <GCS_MAVLink/GCS.h>
 
-#define LATERAL_MOTORS_CONFIG4 true
-#define LIFTING_MOTORS_REVERSIBLE true
+#include "../../ArduCopter/custom_config.h"
 
 uint32_t lastLogTime6 = 0;
 #define DEAD_BAND 0.05
@@ -46,9 +45,6 @@ uint32_t lastLogTime6 = 0;
 // config4 vs config8. A config4 setup means we need to yaw by reversing the
 // motors.
 
-// TODO maybe replace with get_pwm_output_min
-#define MOT_SPIN_MIN 1000
-#define MOT_SPIN_NEUTRAL 1500
 
 extern const AP_HAL::HAL& hal;
 

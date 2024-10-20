@@ -1,4 +1,5 @@
 #include "Copter.h"
+#include "custom_config.h"
 
 /*
   mavlink motor test - implements the MAV_CMD_DO_MOTOR_TEST mavlink command so that the GCS/pilot can test an individual motor or flaps
@@ -7,10 +8,6 @@
 
 // motor test definitions
 #define MOTOR_TEST_TIMEOUT_SEC          600     // max timeout is 10 minutes (600 seconds)
-
-#define LIFTING_MOTORS_REVERSIBLE true
-#define LATERAL_MOTORS_CONFIG4 true
-#define MOT_SPIN_NEUTRAL 1500
 
 static uint32_t motor_test_start_ms;        // system time the motor test began
 static uint32_t motor_test_timeout_ms;      // test will timeout this many milliseconds after the motor_test_start_ms

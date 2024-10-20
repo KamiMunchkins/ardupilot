@@ -1,5 +1,5 @@
 #include "Copter.h"
-#define LIFTING_MOTORS_REVERSIBLE true
+#include "custom_config.h"
 
 /*
  * High level calls to set and update flight modes logic for individual

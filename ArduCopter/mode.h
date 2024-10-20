@@ -3,8 +3,7 @@
 #include "Copter.h"
 #include <AP_Math/chirp.h>
 #include <AP_ExternalControl/AP_ExternalControl_config.h> // TODO why is this needed if Copter.h includes this
-
-#define ACRO_YAW_GAIN 5.0
+#include "custom_config.h"
 
 class Parameters;
 class ParametersG2;

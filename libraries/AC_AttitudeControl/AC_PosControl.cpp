@@ -5,9 +5,9 @@
 #include <AP_Motors/AP_Motors.h>    // motors library
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 #include <AP_Scheduler/AP_Scheduler.h>
+#include "../../ArduCopter/custom_config.h"
 
 extern const AP_HAL::HAL& hal;
-#define LIFTING_MOTORS_REVERSIBLE true
 
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
  // default gains for Plane
