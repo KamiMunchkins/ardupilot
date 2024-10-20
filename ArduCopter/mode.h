@@ -249,6 +249,8 @@ protected:
     RC_Channel *&channel_pitch;
     RC_Channel *&channel_throttle;
     RC_Channel *&channel_yaw;
+    // SBL CUSTOM
+    RC_Channel *&channel_yaw_gain;
     float &G_Dt;
 
     // note that we support two entirely different automatic takeoffs:
@@ -1973,4 +1975,5 @@ private:
     void warning_message(uint8_t message_n);    //Handles output messages to the terminal
 
 };
+
 #endif

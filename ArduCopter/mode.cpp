@@ -23,7 +23,9 @@ Mode::Mode(void) :
     channel_pitch(copter.channel_pitch),
     channel_throttle(copter.channel_throttle),
     channel_yaw(copter.channel_yaw),
-    G_Dt(copter.G_Dt)
+    G_Dt(copter.G_Dt),
+    // SBL CUSTOM
+    channel_yaw_gain(copter.channel_yaw_gain)
 { };
 
 #if AC_PAYLOAD_PLACE_ENABLED

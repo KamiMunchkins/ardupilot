@@ -319,7 +319,7 @@ void ModeSport::get_pilot_desired_angle_rates(float roll_in, float pitch_in, flo
 
             // Calculate rate limit to prevent change of rate through inverted
             rate_limit = fabsf(fabsf(rate_bf_request_cd.z)-fabsf(rate_bf_level_cd.z));
-            rate_bf_request_cd.z += rate_bf_level_cd.z * ACRO_YAW_GAIN;
+            rate_bf_request_cd.z += rate_bf_level_cd.z * copter.yaw_gain(channel_yaw_gain->norm_input());
             rate_bf_request_cd.z = constrain_float(rate_bf_request_cd.z, -rate_limit, rate_limit);
         }
     }
