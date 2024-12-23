@@ -397,7 +397,7 @@ public:
     // return the index of the airspeed we should use for airspeed measurements
     // with multiple airspeed sensors and airspeed affinity in EKF3, it is possible to have switched
     // over to a lane not using the primary airspeed sensor, so AHRS should know which airspeed sensor
-    // to use, i.e, the one being used by the primary lane. A lane switch could have happened due to an 
+    // to use, i.e, the one being used by the primary lane. A lane switch could have happened due to an
     // airspeed sensor fault, which makes this even more necessary
     uint8_t get_active_airspeed_index() const;
 
@@ -460,7 +460,7 @@ public:
     void set_ekf_type(EKFType ahrs_type) {
         _ekf_type.set(ahrs_type);
     }
-    
+
     // these are only out here so vehicles can reference them for parameters
 #if HAL_NAVEKF2_AVAILABLE
     NavEKF2 EKF2;
@@ -509,7 +509,7 @@ public:
         ekf_origin = 0,
         ahrs_home = 1
     };
-    void Write_Origin(LogOriginType origin_type, const Location &loc) const; 
+    void Write_Origin(LogOriginType origin_type, const Location &loc) const;
     void write_video_stabilisation() const;
 
     // return a smoothed and corrected gyro vector in radians/second
@@ -629,7 +629,7 @@ public:
     const Vector3f &get_accel_bias(void) const {
         return state.accel_bias;
     }
-    
+
     /*
      * AHRS is used as a transport for vehicle-takeoff-expected and
      * vehicle-landing-expected:
@@ -810,7 +810,7 @@ private:
 
 #if AP_AHRS_EXTERNAL_ENABLED
     void update_external(void);
-#endif    
+#endif
 
     /*
      * trim-related state and private methods:
@@ -940,7 +940,7 @@ private:
 
     // return true if a airspeed sensor should be used for the AHRS airspeed estimate
     bool _should_use_airspeed_sensor(uint8_t airspeed_index) const;
-    
+
     /*
       update state structure
      */
@@ -1021,7 +1021,7 @@ private:
         DISABLE_AIRSPEED_EKF_CHECK=(1U<<2),
     };
     AP_Int16 _options;
-    
+
     bool option_set(Options option) const {
         return (_options & uint16_t(option)) != 0;
     }

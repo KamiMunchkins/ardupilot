@@ -8,6 +8,8 @@
 #include "afs_copter.h"
 #endif
 
+#include "custom_config.h"
+
 class Parameters;
 class ParametersG2;
 
@@ -1111,7 +1113,7 @@ public:
     bool limit_check();
 
     bool is_taking_off() const override;
-    
+
     bool set_speed_xy(float speed_xy_cms) override;
     bool set_speed_up(float speed_up_cms) override;
     bool set_speed_down(float speed_down_cms) override;
@@ -1616,6 +1618,7 @@ public:
 
     bool init(bool ignore_checks) override;
     void run() override;
+    void run_OBSOLETE();
 
     bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
@@ -1629,6 +1632,7 @@ protected:
 
     const char *name() const override { return "SPORT"; }
     const char *name4() const override { return "SPRT"; }
+    void get_pilot_desired_angle_rates(float roll_in, float pitch_in, float yaw_in, float &roll_out, float &pitch_out, float &yaw_out);
 
 private:
 
@@ -1908,7 +1912,7 @@ protected:
 };
 #endif
 
-class ModeZigZag : public Mode {        
+class ModeZigZag : public Mode {
 
 public:
     ModeZigZag(void);
@@ -2045,7 +2049,6 @@ private:
         FLARE,
         TOUCH_DOWN,
         LANDED } phase_switch;
-
     enum class Navigation_Decision {
         USER_CONTROL_STABILISED,
         STRAIGHT_AHEAD,

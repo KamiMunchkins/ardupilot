@@ -1,4 +1,5 @@
 #include "Copter.h"
+#include "custom_config.h"
 
 /*
   mavlink motor test - implements the MAV_CMD_DO_MOTOR_TEST mavlink command so that the GCS/pilot can test an individual motor or flaps
@@ -61,9 +62,22 @@ void Copter::motor_test_output()
                 // sanity check motor_test_throttle value
 #if FRAME_CONFIG != HELI_FRAME
                 if (motor_test_throttle_value <= 100) {
-                    int16_t pwm_min = motors->get_pwm_output_min();
-                    int16_t pwm_max = motors->get_pwm_output_max();
-                    pwm = (int16_t) (pwm_min + (pwm_max - pwm_min) * motor_test_throttle_value * 1e-2f);
+                    bool reversible = false;
+                    if(motor_test_seq < 4 && LIFTING_MOTORS_REVERSIBLE) {
+                        reversible = true;
+                    } else if (motor_test_seq >= 4 && LATERAL_MOTORS_CONFIG4) {
+                        reversible = true;
+                    }
+
+                    if(reversible) {
+                        float float_thrust = motor_test_throttle_value * 1e-2f; // * .01
+                        int16_t range_up = motors->get_pwm_output_max() - MOT_SPIN_NEUTRAL;
+                        pwm = (int16_t) MOT_SPIN_NEUTRAL + float_thrust * (float_thrust * range_up);
+                    } else {
+                        int16_t pwm_min = motors->get_pwm_output_min();
+                        int16_t pwm_max = motors->get_pwm_output_max();
+                        pwm = (int16_t) (pwm_min + (pwm_max - pwm_min) * motor_test_throttle_value * 1e-2f);
+                    }
                 }
 #endif
                 break;
@@ -141,8 +155,15 @@ bool Copter::mavlink_motor_control_check(const GCS_MAVLINK &gcs_chan, bool check
 MAV_RESULT Copter::mavlink_motor_test_start(const GCS_MAVLINK &gcs_chan, uint8_t motor_seq, uint8_t throttle_type, float throttle_value,
                                          float timeout_sec, uint8_t motor_count)
 {
-    if (motor_count == 0) {
-        motor_count = 1;
+    // SBL hard-coded this value.
+    if(FORCE_6DOF_ATTITUDE_CONTROLLER) {
+        motor_count = 12;
+        if(LATERAL_MOTORS_CONFIG4) {
+            motor_count = 8;
+        }
+        if (motor_count == 0) {
+            motor_count = 1;
+        }
     }
     // if test has not started try to start it
     if (!ap.motor_test) {
@@ -193,7 +214,7 @@ MAV_RESULT Copter::mavlink_motor_test_start(const GCS_MAVLINK &gcs_chan, uint8_t
 
     if (motor_test_throttle_type == MOTOR_TEST_COMPASS_CAL) {
         compass.per_motor_calibration_start();
-    }            
+    }
 
     // return success
     return MAV_RESULT_ACCEPTED;
@@ -207,7 +228,7 @@ void Copter::motor_test_stop()
         return;
     }
 
-    gcs().send_text(MAV_SEVERITY_INFO, "finished motor test");    
+    gcs().send_text(MAV_SEVERITY_INFO, "finished motor test");
 
     // flag test is complete
     ap.motor_test = false;

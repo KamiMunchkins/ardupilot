@@ -1,4 +1,19 @@
 #include "Copter.h"
+#include <GCS_MAVLink/GCS.h>
+
+uint32_t lastLogTime7 = 0;
+uint32_t lastLogTime8 = 0;
+#define LOG_PERIOD 3000
+#define LOG_PERIOD2 2500
+/*
+    // SBL SBL SBL RETURN
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime8 > LOG_PERIOD2) {
+        lastLogTime8 = now;
+        debug = true;
+    }
+*/
 
 #include <AP_Stats/AP_Stats.h>              // statistics library
 
@@ -36,6 +51,8 @@ void Copter::update_land_and_crash_detectors()
 // called at MAIN_LOOP_RATE
 void Copter::update_land_detector()
 {
+
+
     // land detector can not use the following sensors because they are unreliable during landing
     // barometer altitude :                 ground effect can cause errors larger than 4m
     // EKF vertical velocity or altitude :  poor barometer and large acceleration from ground impact

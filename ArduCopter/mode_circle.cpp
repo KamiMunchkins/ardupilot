@@ -29,8 +29,20 @@ bool ModeCircle::init(bool ignore_checks)
         if (!AP::ahrs().get_location_from_origin_offset_NED(circle_center, pos * 0.01)) {
             return false;
         }
+
+        // SBL CUSTOM CODE
+		// Get the current altitude above ground level (AGL) in centimeters
+        // height above ground level in meters
+        float hagl;
+        if(!AP::ahrs().get_hagl(hagl)) {
+            return false;
+        }
+        hagl *= 100.0;
+        circle_center.set_alt_cm(hagl, Location::AltFrame::ABOVE_TERRAIN);
+        // SBL END CUSTOM CODE
+
         // point at the ground:
-        circle_center.set_alt_cm(0, Location::AltFrame::ABOVE_TERRAIN);
+        // circle_center.set_alt_cm(0, Location::AltFrame::ABOVE_TERRAIN);
         AP_Mount *s = AP_Mount::get_singleton();
         s->set_roi_target(circle_center);
     }

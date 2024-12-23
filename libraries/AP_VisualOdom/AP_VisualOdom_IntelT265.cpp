@@ -27,10 +27,21 @@
 
 extern const AP_HAL::HAL& hal;
 
+// SBL hack for logging
+uint32_t lastLogTime = 0;
+uint32_t lastLogTime2 = 0;
+#define LOG_PERIOD 3000
+
 // consume vision pose estimate data and send to EKF. distances in meters
 // quality of -1 means failed, 0 means unknown, 1 is worst, 100 is best
 void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint32_t time_ms, float x, float y, float z, const Quaternion &attitude, float posErr, float angErr, uint8_t reset_counter, int8_t quality)
 {
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime > LOG_PERIOD) {
+        lastLogTime = now;
+        debug = true;
+    }
     const float scale_factor = _frontend.get_pos_scale();
     Vector3f pos{x * scale_factor, y * scale_factor, z * scale_factor};
     Quaternion att = attitude;
@@ -52,6 +63,7 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
 
     // rotate position and attitude to align with vehicle
     rotate_and_correct_position(pos);
+	// this rotates attitude by yaw
     rotate_attitude(att);
 
     // record position for voxl reset jump handling
@@ -62,6 +74,10 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
 
     // record quality
     _quality = quality;
+
+    if(debug && false) {
+            gcs().send_text(MAV_SEVERITY_INFO, "SBL pose quality: %d", quality);
+    }
 
     // check for recent position reset
     bool consume = should_consume_sensor_data(true, reset_counter) && (_quality >= _frontend.get_quality_min());
@@ -75,6 +91,29 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
     float pitch;
     float yaw;
     att.to_euler(roll, pitch, yaw);
+
+    if(debug && false) {
+        Quaternion ahrs_quat;
+        if (!AP::ahrs().get_quaternion(ahrs_quat)) {
+            gcs().send_text(MAV_SEVERITY_WARNING, "VisOdom SBL: could not fetch AHRS quat");
+        } else {
+            float ahrsRoll;
+            float ahrsYaw;
+            float ahrsPitch;
+            ahrs_quat.to_euler(ahrsRoll, ahrsPitch, ahrsYaw);
+
+            gcs().send_text(
+                    MAV_SEVERITY_INFO,
+                    "V: AHRS PYR (%d, %d, %d) - (%d, %d, %d)",
+                    (int) degrees(ahrsPitch),
+                    (int) wrap_360(degrees(ahrsYaw)),
+                    (int) degrees(ahrsRoll),
+                    (int) degrees(pitch),
+                    (int) wrap_360(degrees(yaw)),
+                    (int) degrees(roll)
+            );
+        }
+    }
 
 #if HAL_LOGGING_ENABLED
     // log sensor data
@@ -92,12 +131,22 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
 // quality of -1 means failed, 0 means unknown, 1 is worst, 100 is best
 void AP_VisualOdom_IntelT265::handle_vision_speed_estimate(uint64_t remote_time_us, uint32_t time_ms, const Vector3f &vel, uint8_t reset_counter, int8_t quality)
 {
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime2 > LOG_PERIOD) {
+        lastLogTime2 = now;
+        debug = true;
+    }
     // rotate velocity to align with vehicle
     Vector3f vel_corrected = vel;
     rotate_velocity(vel_corrected);
 
     // record quality
     _quality = quality;
+    if(debug && false) {
+            gcs().send_text(MAV_SEVERITY_INFO, "SBL speed quality: %d", quality);
+            gcs().send_text(MAV_SEVERITY_INFO, "V velocity: (%.2f, %.2f, %.2f)", vel_corrected.x, vel_corrected.y, vel_corrected.z);
+    }
 
     // check for recent position reset
     bool consume = should_consume_sensor_data(false, reset_counter) && (_quality >= _frontend.get_quality_min());
@@ -149,11 +198,13 @@ void AP_VisualOdom_IntelT265::rotate_attitude(Quaternion &attitude) const
 // use sensor provided attitude to calculate rotation to align sensor with AHRS/EKF attitude
 bool AP_VisualOdom_IntelT265::align_yaw_to_ahrs(const Vector3f &position, const Quaternion &attitude)
 {
+	// SBL TODO change this block here so that WE do align:
+	// +        align_yaw(position, attitude, 0);
+	// +        return true;
     // do not align to ahrs if we are its yaw source
     if (AP::ahrs().using_extnav_for_yaw()) {
         return false;
     }
-
     // do not align until ahrs yaw initialised
     if (!AP::ahrs().initialised()
 #if AP_AHRS_DCM_ENABLED
@@ -163,6 +214,7 @@ bool AP_VisualOdom_IntelT265::align_yaw_to_ahrs(const Vector3f &position, const 
         return false;
     }
 
+    gcs().send_text(MAV_SEVERITY_INFO, "VisOdom: aligning yaw to %d", (int) degrees(AP::ahrs().get_yaw()));
     align_yaw(position, attitude, AP::ahrs().get_yaw());
     return true;
 }
@@ -273,9 +325,34 @@ bool AP_VisualOdom_IntelT265::pre_arm_check(char *failure_msg, uint8_t failure_m
         return false;
     }
 
+    // SBL DEBUG START
+	// note also that another function exists in libraries/AC_AttitudeControl/AC_AttitudeControl.cpp
+	// _ahrs.get_quat_body_to_ned(_attitude_target);
+
+    float ahrsPitch = ahrs_quat.get_euler_pitch();
+    float ahrsYaw = ahrs_quat.get_euler_yaw();
+    float ahrsRoll = ahrs_quat.get_euler_roll();
+
+    float myPitch = _attitude_last.get_euler_pitch();
+    float myYaw = _attitude_last.get_euler_yaw();
+    float myRoll = _attitude_last.get_euler_roll();
+
+    hal.util->snprintf(failure_msg, failure_msg_len, "AHRS PYR (%d, %d, %d) vs (%d, %d, %d)",
+        (int) degrees(ahrsPitch),
+        (int) degrees(ahrsYaw),
+        (int) degrees(ahrsRoll),
+        (int) degrees(myPitch),
+        (int) degrees(myYaw),
+        (int) degrees(myRoll)
+    );
+    // SBL DEBUG END
+
     // check if roll and pitch is different by > 10deg (using NED so cannot determine whether roll or pitch specifically)
     const float rp_diff_deg = degrees(ahrs_quat.roll_pitch_difference(_attitude_last));
     if (rp_diff_deg > 10.0f) {
+        // SBL CHANGE HERE. This gives a little clarity to ambiguity when
+        // visodom fails initial health check. From my experience, it would be
+        // reasonable to disable this check.
         hal.util->snprintf(failure_msg, failure_msg_len, "roll/pitch diff %4.1f deg (>10)",(double)rp_diff_deg);
         return false;
     }

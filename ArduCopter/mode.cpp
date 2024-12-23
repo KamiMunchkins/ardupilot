@@ -1,4 +1,5 @@
 #include "Copter.h"
+#include "custom_config.h"
 
 /*
  * High level calls to set and update flight modes logic for individual
@@ -563,13 +564,13 @@ void Mode::zero_throttle_and_hold_attitude()
 // handle situations where the vehicle is on the ground waiting for takeoff
 // force_throttle_unlimited should be true in cases where we want to keep the motors spooled up
 // (instead of spooling down to ground idle).  This is required for tradheli's in Guided and Auto
-// where we always want the motor spooled up in Guided or Auto mode.  Tradheli's main rotor stops 
+// where we always want the motor spooled up in Guided or Auto mode.  Tradheli's main rotor stops
 // when spooled down to ground idle.
 // ultimately it forces the motor interlock to be obeyed in auto and guided modes when on the ground.
 void Mode::make_safe_ground_handling(bool force_throttle_unlimited)
 {
     if (force_throttle_unlimited) {
-        // keep rotors turning 
+        // keep rotors turning
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
     } else {
         // spool down to ground idle
@@ -578,7 +579,7 @@ void Mode::make_safe_ground_handling(bool force_throttle_unlimited)
 
     // aircraft is landed, integrator terms must be reset regardless of spool state
     attitude_control->reset_rate_controller_I_terms_smoothly();
- 
+
     switch (motors->get_spool_state()) {
     case AP_Motors::SpoolState::SHUT_DOWN:
     case AP_Motors::SpoolState::GROUND_IDLE:
@@ -922,15 +923,35 @@ float Mode::get_pilot_desired_throttle() const
 
     // calculate normalised throttle input
     float throttle_in;
-    if (throttle_control < mid_stick) {
-        throttle_in = ((float)throttle_control)*0.5f/(float)mid_stick;
+    bool isNegative = false;
+    if(LIFTING_MOTORS_REVERSIBLE) {
+        if(throttle_control < mid_stick) {
+            isNegative = true;
+        }
+        throttle_in = ((float)(throttle_control-mid_stick)) / (float)(1000-mid_stick);
+        if(throttle_in < 0) {
+            throttle_in *= -1;
+            isNegative = true;
+        }
     } else {
-        throttle_in = 0.5f + ((float)(throttle_control-mid_stick)) * 0.5f / (float)(1000-mid_stick);
+        if (throttle_control < mid_stick) {
+            throttle_in = ((float)throttle_control)*0.5f/(float)mid_stick;
+        } else {
+            throttle_in = 0.5f + ((float)(throttle_control-mid_stick)) * 0.5f / (float)(1000-mid_stick);
+        }
     }
 
     const float expo = constrain_float(-(thr_mid-0.5f)/0.375f, -0.5f, 1.0f);
     // calculate the output throttle using the given expo function
     float throttle_out = throttle_in*(1.0f-expo) + expo*throttle_in*throttle_in*throttle_in;
+    if(LIFTING_MOTORS_REVERSIBLE) {
+        throttle_out *= 0.5;
+        if(isNegative) {
+            return 0.5 - throttle_out;
+        } else {
+            return 0.5 + throttle_out;
+        }
+    }
     return throttle_out;
 }
 

@@ -1,4 +1,5 @@
 // User specific config file.  Any items listed in config.h can be overridden here.
+// look in ./Tools/scripts/build_options.py for actual list
 
 // uncomment the lines below to disable features (flash sizes listed are for APM2 boards and will underestimate savings on Pixhawk and other boards)
 //#define LOGGING_ENABLED       0            // disable logging to save 11K of flash space

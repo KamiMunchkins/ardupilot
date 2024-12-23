@@ -13,22 +13,34 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// SBL add
+#include "../../GCS_MAVLink/GCS_MAVLink.h"    // MAVLink GCS definitions
+#include <GCS_MAVLink/GCS.h>
+                                        //
 #include <AP_HAL/AP_HAL.h>
 #include "AP_MotorsMatrix.h"
 #include <AP_Vehicle/AP_Vehicle_Type.h>
+
+
 
 extern const AP_HAL::HAL& hal;
 
 // init
 void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame_type)
 {
+    // SBL if using 6dof define, frame_class should be SUB_FRAME_CUSTOM
     // record requested frame class and type
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init");
+
     _active_frame_class = frame_class;
     _active_frame_type = frame_type;
 
-    if (frame_class == MOTOR_FRAME_SCRIPTING_MATRIX) {
-        // if Scripting frame class, do nothing scripting must call its own dedicated init function
-        return;
+    // SBL DISABLE
+    if (false) {
+        if (frame_class == MOTOR_FRAME_SCRIPTING_MATRIX) {
+            // if Scripting frame class, do nothing scripting must call its own dedicated init function
+            return;
+        }
     }
 
     // setup the motors
@@ -42,6 +54,7 @@ void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame
 // dedicated init for lua scripting
 bool AP_MotorsMatrix::init(uint8_t expected_num_motors)
 {
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init v2");
     if (_active_frame_class != MOTOR_FRAME_SCRIPTING_MATRIX) {
         // not the correct class
         return false;
@@ -505,6 +518,7 @@ void AP_MotorsMatrix::add_motor_raw(int8_t motor_num, float roll_fac, float pitc
         // do not allow motors to be set if the current frame type has init correctly
         return;
     }
+    debugSet3 = true;
 
     // ensure valid motor number is provided
     if (motor_num >= 0 && motor_num < AP_MOTORS_MAX_NUM_MOTORS) {
@@ -591,9 +605,15 @@ bool AP_MotorsMatrix::setup_quad_matrix(motor_frame_type frame_type)
     case MOTOR_FRAME_TYPE_X: {
         _frame_type_string = "X";
         static const AP_MotorsMatrix::MotorDef motors[] {
+            // top right
             {   45, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  1 },
+            // bottom left
             { -135, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  3 },
+            // top left
+            // clockwise is negative 1
+            // counterclockwise is POSITIVE 1
             {  -45, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   4 },
+            // bottom right
             {  135, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   2 },
         };
         add_motors(motors, ARRAY_SIZE(motors));

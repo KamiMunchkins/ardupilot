@@ -70,6 +70,7 @@ void AP_Motors::get_frame_and_type_string(char *buffer, uint8_t buflen) const
     } else {
         hal.util->snprintf(buffer, buflen, "Frame: %s", frame_str);
     }
+    // hal.util->snprintf(buffer, buflen, "SBL AP_Motors get_frame_and_type");
 }
 
 void AP_Motors::armed(bool arm)
