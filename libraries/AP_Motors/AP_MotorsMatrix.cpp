@@ -21,6 +21,7 @@
 #include "AP_MotorsMatrix.h"
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 
+#include "../../ArduCopter/custom_config.h"
 
 
 extern const AP_HAL::HAL& hal;
@@ -617,6 +618,13 @@ bool AP_MotorsMatrix::setup_quad_matrix(motor_frame_type frame_type)
             {  135, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   2 },
         };
         add_motors(motors, ARRAY_SIZE(motors));
+        if(ADD_QUAD_TAILFIN) {
+            float rollFactor0 = 0;
+            float pitchFactor0 = 0;
+            int motorIndex = 4;
+            float yawFactor = 1.0;
+            add_motor_raw(motorIndex, rollFactor0, pitchFactor0, yawFactor, motorIndex + 1);
+        }
         break;
     }
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane) || APM_BUILD_TYPE(APM_BUILD_UNKNOWN)
