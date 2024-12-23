@@ -29,4 +29,8 @@
 // separately with a tail fin.
 #define DIFF_YAW_ENABLED 0
 
+// this is for if we're using indoor flight with no compass, but it was
+// determined this is not necessary.
+#define VISODOM_PRIMARY_COMPASS false
+
 #endif // CUSTOM_CONFIG_H

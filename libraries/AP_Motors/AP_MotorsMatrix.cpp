@@ -812,11 +812,17 @@ bool AP_MotorsMatrix::setup_hexa_matrix(motor_frame_type frame_type)
     case MOTOR_FRAME_TYPE_X: {
         _frame_type_string = "X";
         static const AP_MotorsMatrix::MotorDef motors[] {
+            // right
             {   90, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   2 },
+            // left
             {  -90, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  5 },
+            // top left
             {  -30, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   6 },
+            // bottom right
             {  150, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  3 },
+            // top right
             {   30, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  1 },
+            // bottom left
             { -150, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   4 },
         };
         add_motors(motors, ARRAY_SIZE(motors));

@@ -23,6 +23,8 @@
 #include <AP_AHRS/AP_AHRS.h>
 #include <GCS_MAVLink/GCS.h>
 
+#include "../../ArduCopter/custom_config.h"
+
 #define VISUALODOM_RESET_IGNORE_DURATION_MS 1000    // sensor data is ignored for 1sec after a position reset
 
 extern const AP_HAL::HAL& hal;
@@ -91,6 +93,7 @@ void AP_VisualOdom_IntelT265::handle_pose_estimate(uint64_t remote_time_us, uint
     float pitch;
     float yaw;
     att.to_euler(roll, pitch, yaw);
+    // SBL NEED TO OUTPUT MY VALUES HERE
 
     if(debug && false) {
         Quaternion ahrs_quat;
@@ -198,13 +201,14 @@ void AP_VisualOdom_IntelT265::rotate_attitude(Quaternion &attitude) const
 // use sensor provided attitude to calculate rotation to align sensor with AHRS/EKF attitude
 bool AP_VisualOdom_IntelT265::align_yaw_to_ahrs(const Vector3f &position, const Quaternion &attitude)
 {
-	// SBL TODO change this block here so that WE do align:
-	// +        align_yaw(position, attitude, 0);
-	// +        return true;
-    // do not align to ahrs if we are its yaw source
-    if (AP::ahrs().using_extnav_for_yaw()) {
-        return false;
+    if(!VISODOM_PRIMARY_COMPASS) {
+        // do not align to ahrs if we are its yaw source
+        if (AP::ahrs().using_extnav_for_yaw()) {
+            return false;
+        }
+
     }
+
     // do not align until ahrs yaw initialised
     if (!AP::ahrs().initialised()
 #if AP_AHRS_DCM_ENABLED
@@ -212,6 +216,14 @@ bool AP_VisualOdom_IntelT265::align_yaw_to_ahrs(const Vector3f &position, const 
 #endif
         ) {
         return false;
+    }
+    // SBL change here - align to 0 and assume drone is oriented to true north
+    if(VISODOM_PRIMARY_COMPASS) {
+        if (AP::ahrs().using_extnav_for_yaw()) {
+            gcs().send_text(MAV_SEVERITY_INFO, "VisOdom: aligning yaw to 0");
+            align_yaw(position, attitude, 0);
+            return true;
+        }
     }
 
     gcs().send_text(MAV_SEVERITY_INFO, "VisOdom: aligning yaw to %d", (int) degrees(AP::ahrs().get_yaw()));
@@ -356,6 +368,18 @@ bool AP_VisualOdom_IntelT265::pre_arm_check(char *failure_msg, uint8_t failure_m
         hal.util->snprintf(failure_msg, failure_msg_len, "roll/pitch diff %4.1f deg (>10)",(double)rp_diff_deg);
         return false;
     }
+    /*
+     * 
+     * 1 radian = 57.2958
+    // get euler roll angle in radians
+    T       get_euler_roll() const;
+
+    // get euler pitch angle in radians
+    T       get_euler_pitch() const;
+
+    // get euler yaw angle in radians
+    T       get_euler_yaw() const;
+     */
 
     // check if yaw is different by > 10deg
     Vector3f angle_diff;
