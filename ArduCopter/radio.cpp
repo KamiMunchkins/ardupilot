@@ -24,8 +24,6 @@ void Copter::init_rc_in()
     channel_pitch    = rc().channel(rcmap.pitch()-1);
     channel_throttle = rc().channel(rcmap.throttle()-1);
     channel_yaw      = rc().channel(rcmap.yaw()-1);
-    // SBL CUSTOM
-    channel_yaw_gain = rc().channel(ACRO_YAW_GAIN_CHANNEL - 1);
 
     // set rc channel ranges
     channel_roll->set_angle(ROLL_PITCH_YAW_INPUT_MAX);

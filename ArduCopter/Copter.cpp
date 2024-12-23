@@ -814,12 +814,6 @@ bool Copter::get_rate_ef_targets(Vector3f& rate_ef_targets) const
     }
     return true;
 }
-// norm_input is a value from -1..1
-float Copter::yaw_gain(float norm_input) {
-	float interp_val = (norm_input + 1.0) / 2.0;
-        float interp_range = ACRO_YAW_GAIN_MAX - ACRO_YAW_GAIN_MIN;
-	return interp_val * interp_range + ACRO_YAW_GAIN_MIN;
-}
 
 /*
   constructor for main Copter class
