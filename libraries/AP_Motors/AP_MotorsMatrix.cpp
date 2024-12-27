@@ -21,6 +21,12 @@
 #include "AP_MotorsMatrix.h"
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 
+#include "../../ArduCopter/custom_config.h"
+
+#define TAILFIN_MOTOR_INDEX 4
+uint32_t lastLogTime99 = 0;
+#define DEAD_BAND 0.05
+#define LOG_PERIOD 3000
 
 
 extern const AP_HAL::HAL& hal;
@@ -28,6 +34,7 @@ extern const AP_HAL::HAL& hal;
 // init
 void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame_type)
 {
+    // SBL this is what actually gets called
     // SBL if using 6dof define, frame_class should be SUB_FRAME_CUSTOM
     // record requested frame class and type
     //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init");
@@ -54,6 +61,10 @@ void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame
 // dedicated init for lua scripting
 bool AP_MotorsMatrix::init(uint8_t expected_num_motors)
 {
+    // SBL I think this function is unused.
+    if(ADD_QUAD_TAILFIN) {
+        expected_num_motors++;
+    }
     //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init v2");
     if (_active_frame_class != MOTOR_FRAME_SCRIPTING_MATRIX) {
         // not the correct class
@@ -188,9 +199,37 @@ void AP_MotorsMatrix::output_to_motors()
     }
 
     // convert output to PWM and send to each motor
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime99 > LOG_PERIOD) {
+        lastLogTime99 = now;
+        debug = true;
+    }
     for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            rc_write(i, output_to_pwm(_actuator[i]));
+            if(ADD_QUAD_TAILFIN) {
+                if(i != TAILFIN_MOTOR_INDEX) {
+                    rc_write(i, output_to_pwm(_actuator[i]));
+                } else {
+                    if(_yaw_motors_enabled) {
+                        float basicYawFactor = constrain_float(_yaw_in + _yaw_in_ff, -1, 1);
+                        if(abs(basicYawFactor) >= 1) {
+                            limit.yaw = true;
+                        }
+                        if(debug) {
+                                gcs().send_text(MAV_SEVERITY_INFO, "SBL basicYawFactor %.2f", basicYawFactor);
+                        }
+                        // copy-pasted from 6dof code.
+                        int16_t range_up = get_pwm_output_max() - MOT_SPIN_NEUTRAL;
+                        int16_t range_down = MOT_SPIN_NEUTRAL - get_pwm_output_min();
+                        int16_t tailOut = MOT_SPIN_NEUTRAL + basicYawFactor * (basicYawFactor > 0 ? range_up : range_down);
+                        rc_write(i, tailOut);
+                    } else {
+                        limit.yaw = true;
+                        rc_write(i, MOT_SPIN_NEUTRAL);
+                    }
+                }
+            }
         }
     }
 }
@@ -340,7 +379,10 @@ void AP_MotorsMatrix::output_armed_stabilizing()
     if (fabsf(yaw_thrust) > yaw_allowed) {
         // not all commanded yaw can be used
         yaw_thrust = constrain_float(yaw_thrust, -yaw_allowed, yaw_allowed);
-        limit.yaw = true;
+        // custom change to not handle yaw limitation here if we're using a tailfin.
+        if(!ADD_QUAD_TAILFIN) {
+            limit.yaw = true;
+        }
     }
 
     // add yaw control to thrust outputs
@@ -387,7 +429,9 @@ void AP_MotorsMatrix::output_armed_stabilizing()
         // Full range is being used by roll, pitch, and yaw.
         limit.roll = true;
         limit.pitch = true;
-        limit.yaw = true;
+        if(!ADD_QUAD_TAILFIN) {
+            limit.yaw = true;
+        }
         if (thr_adj > 0.0f) {
             limit.throttle_upper = true;
         }
@@ -518,7 +562,6 @@ void AP_MotorsMatrix::add_motor_raw(int8_t motor_num, float roll_fac, float pitc
         // do not allow motors to be set if the current frame type has init correctly
         return;
     }
-    debugSet3 = true;
 
     // ensure valid motor number is provided
     if (motor_num >= 0 && motor_num < AP_MOTORS_MAX_NUM_MOTORS) {
@@ -617,6 +660,14 @@ bool AP_MotorsMatrix::setup_quad_matrix(motor_frame_type frame_type)
             {  135, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   2 },
         };
         add_motors(motors, ARRAY_SIZE(motors));
+        // this might be totally unnecessary if we just output yaw to the k_yaw servo output.
+        if(ADD_QUAD_TAILFIN) {
+            // we have to pick either exclusively motor output or exclusively servo output from output_rpyt
+            float rollFactor0 = 0;
+            float pitchFactor0 = 0;
+            float yawFactor = 1.0;
+            add_motor_raw(TAILFIN_MOTOR_INDEX, rollFactor0, pitchFactor0, yawFactor, TAILFIN_MOTOR_INDEX + 1);
+        }
         break;
     }
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane) || APM_BUILD_TYPE(APM_BUILD_UNKNOWN)

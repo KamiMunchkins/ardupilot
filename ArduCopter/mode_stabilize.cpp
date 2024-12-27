@@ -1,4 +1,20 @@
 #include "Copter.h"
+#include "custom_config.h"
+#include <GCS_MAVLink/GCS.h>
+
+uint32_t lastLogTime4 = 0;
+#define LOG_PERIOD 3000
+        /*
+        bool debug = false;
+        uint32_t now = AP_HAL::millis();
+        if(now - lastLogTime4 > LOG_PERIOD) {
+            lastLogTime4 = now;
+            debug = true;
+        }
+        if(debug) {
+                gcs().send_text(MAV_SEVERITY_INFO, "SBL forward_in was %.2f", _forward_in);
+        }
+        */
 
 /*
  * Init and run calls for stabilize flight mode
@@ -67,4 +83,20 @@ void ModeStabilize::run()
 
     // output pilot's throttle
     attitude_control->set_throttle_out(pilot_desired_throttle, true, g.throttle_filt);
+    bool debug = false;
+    uint32_t now = AP_HAL::millis();
+    if(now - lastLogTime4 > LOG_PERIOD) {
+        lastLogTime4 = now;
+        debug = true;
+    }
+    if(FORCE_WEATHERVANE) {
+        if(debug) {
+            gcs().send_text(MAV_SEVERITY_INFO, "SBL cp1 %.2f", target_yaw_rate);
+        }
+        if(target_yaw_rate == 0) {
+            motors->enable_yaw_motors(false);
+        } else {
+            motors->enable_yaw_motors(true);
+        }
+    }
 }

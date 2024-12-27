@@ -175,22 +175,22 @@ void ModeSport::run()
     // State Machine
     switch (sport_state) {
 
-    case AltHold_MotorStopped:
+    case AltHoldModeState::MotorStopped:
         attitude_control->reset_rate_controller_I_terms();
         attitude_control->reset_yaw_target_and_rate(false);
         pos_control->relax_z_controller(0.0f);   // forces throttle output to decay to zero
         break;
 
-    case AltHold_Landed_Ground_Idle:
+    case AltHoldModeState::Landed_Ground_Idle:
         attitude_control->reset_yaw_target_and_rate();
         FALLTHROUGH;
 
-    case AltHold_Landed_Pre_Takeoff:
+    case AltHoldModeState::Landed_Pre_Takeoff:
         attitude_control->reset_rate_controller_I_terms_smoothly();
         pos_control->relax_z_controller(0.0f);   // forces throttle output to decay to zero
         break;
 
-    case AltHold_Takeoff:
+    case AltHoldModeState::Takeoff:
         // initiate take-off
         if (!takeoff.running()) {
             takeoff.start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
@@ -203,7 +203,7 @@ void ModeSport::run()
         takeoff.do_pilot_takeoff(target_climb_rate);
         break;
 
-    case AltHold_Flying:
+    case AltHoldModeState::Flying:
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
         // get avoidance adjusted climb rate
@@ -301,7 +301,7 @@ void ModeSport::get_pilot_desired_angle_rates(float roll_in, float pitch_in, flo
         }
 
         // convert earth-frame level rates to body-frame level rates
-        attitude_control->euler_rate_to_ang_vel(attitude_control->get_att_target_euler_cd() * radians(0.01f), rate_ef_level_cd, rate_bf_level_cd);
+        attitude_control->euler_rate_to_ang_vel(attitude_control->get_attitude_target_quat(), rate_ef_level_cd, rate_bf_level_cd);
 
         // combine earth frame rate corrections with rate requests
         if (g.acro_trainer == (uint8_t)ModeAcro::Trainer::LIMITED) {

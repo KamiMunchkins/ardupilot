@@ -461,6 +461,17 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     _motors.set_pitch(get_rate_pitch_pid().update_all(ang_vel_body.y, gyro.y,  dt, _motors.limit.pitch, _pd_scale.y) + _actuator_sysid.y);
     _motors.set_pitch_ff(get_rate_pitch_pid().get_ff());
 
+    // SBL COME BACK AND EXAMINE THIS.
+    if(FORCE_WEATHERVANE) {
+        // this did not appear to work.
+        if(!_motors.yaw_enabled() && false) {
+            // set target velocity equal to current velocity (not 0).
+            // this is same logic from relax_attitude_controlers()
+            ang_vel_body.z = gyro.z;
+            get_rate_yaw_pid().reset_filter();
+            get_rate_yaw_pid().reset_I();
+        }
+    }
     _motors.set_yaw(get_rate_yaw_pid().update_all(ang_vel_body.z, gyro.z,  dt, _motors.limit.yaw, _pd_scale.z) + _actuator_sysid.z);
     _motors.set_yaw_ff(get_rate_yaw_pid().get_ff()*_feedforward_scalar);
 
