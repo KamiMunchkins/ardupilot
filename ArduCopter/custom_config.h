@@ -36,12 +36,4 @@
 // adds a 5th (servo) motor to quad frame for a tail fin.
 #define ADD_QUAD_TAILFIN true
 
-// this flag has been aded to flight modes:
-// ModeLoiter
-// ModeStabilize
-// ModeFlowhold
-// ModeAlthold
-// we don't actually need to take the average because the auto_yaw settings will automatically work as long as the pilot's input yaw is zero.
-#define FORCE_WEATHERVANE true
-
 #endif // CUSTOM_CONFIG_H

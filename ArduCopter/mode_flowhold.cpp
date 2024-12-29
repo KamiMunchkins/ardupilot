@@ -344,13 +344,6 @@ void ModeFlowHold::run()
 
     // run the vertical position controller and set output throttle
     pos_control->update_z_controller();
-    if(FORCE_WEATHERVANE) {
-        if(target_yaw_rate == 0) {
-            motors->enable_yaw_motors(false);
-        } else {
-            motors->enable_yaw_motors(true);
-        }
-    }
 }
 
 /*

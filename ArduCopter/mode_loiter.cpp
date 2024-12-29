@@ -1,5 +1,4 @@
 #include "Copter.h"
-#include "custom_config.h"
 
 #if MODE_LOITER_ENABLED
 
@@ -189,7 +188,6 @@ void ModeLoiter::run()
         // call attitude controller
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
 
-
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
@@ -205,14 +203,6 @@ void ModeLoiter::run()
 
     // run the vertical position controller and set output throttle
     pos_control->update_z_controller();
-
-    if(FORCE_WEATHERVANE) {
-        if(target_yaw_rate == 0) {
-            motors->enable_yaw_motors(false);
-        } else {
-            motors->enable_yaw_motors(true);
-        }
-    }
 }
 
 uint32_t ModeLoiter::wp_distance() const
@@ -224,4 +214,5 @@ int32_t ModeLoiter::wp_bearing() const
 {
     return loiter_nav->get_bearing_to_target();
 }
+
 #endif
