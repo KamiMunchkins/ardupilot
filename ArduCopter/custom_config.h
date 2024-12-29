@@ -33,7 +33,4 @@
 // determined this is not necessary.
 #define VISODOM_PRIMARY_COMPASS false
 
-// adds a 5th (servo) motor to quad frame for a tail fin.
-#define ADD_QUAD_TAILFIN true
-
 #endif // CUSTOM_CONFIG_H
