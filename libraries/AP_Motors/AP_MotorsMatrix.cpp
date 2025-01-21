@@ -237,6 +237,9 @@ void AP_MotorsMatrix::output_armed_stabilizing()
 
     // yaw thrust input value, +/- 1.0
     float yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;
+    if (EXTERNAL_YAW_CONTROL && fabsf(yaw_thrust) >= 1.0) {
+        limit.yaw = true;
+    }
 
     // throttle thrust input value, 0.0 - 1.0
     float throttle_thrust = get_throttle() * compensation_gain;
@@ -338,7 +341,7 @@ void AP_MotorsMatrix::output_armed_stabilizing()
         }
     }
 
-    if (fabsf(yaw_thrust) > yaw_allowed) {
+    if (!EXTERNAL_YAW_CONTROL && fabsf(yaw_thrust) > yaw_allowed) {
         // not all commanded yaw can be used
         yaw_thrust = constrain_float(yaw_thrust, -yaw_allowed, yaw_allowed);
         limit.yaw = true;
@@ -388,7 +391,9 @@ void AP_MotorsMatrix::output_armed_stabilizing()
         // Full range is being used by roll, pitch, and yaw.
         limit.roll = true;
         limit.pitch = true;
-        limit.yaw = true;
+        if(!EXTERNAL_YAW_CONTROL) {
+            limit.yaw = true;
+        }
         if (thr_adj > 0.0f) {
             limit.throttle_upper = true;
         }

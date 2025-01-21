@@ -18,6 +18,7 @@
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <SRV_Channel/SRV_Channel.h>
 #include <AP_Logger/AP_Logger.h>
+#include "../../ArduCopter/custom_config.h"
 
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
@@ -164,7 +165,7 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
 
     // @Param: SPOOL_TIME
     // @DisplayName: Spool up time
-    // @Description: Time in seconds to spool up the motors from zero to min throttle. 
+    // @Description: Time in seconds to spool up the motors from zero to min throttle.
     // @Range: 0.05 2
     // @Units: s
     // @Increment: 0.1
@@ -180,7 +181,7 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     AP_GROUPINFO("BOOST_SCALE", 37, AP_MotorsMulticopter, _boost_scale, 0),
 
     // 38 RESERVED for BAT_POW_MAX
-    
+
     // @Param: BAT_IDX
     // @DisplayName: Battery compensation index
     // @Description: Which battery monitor should be used for doing compensation
@@ -303,7 +304,12 @@ void AP_MotorsMulticopter::output_rpyt(void)
 {
     SRV_Channels::set_output_scaled(SRV_Channel::k_roll_out, _roll_in_ff * 4500);
     SRV_Channels::set_output_scaled(SRV_Channel::k_pitch_out, _pitch_in_ff * 4500);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_yaw_out, _yaw_in_ff * 4500);
+    if(EXTERNAL_YAW_CONTROL) {
+        float yaw_thrust = constrain_float(_yaw_in + _yaw_in_ff, -1, 1);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_yaw_out, yaw_thrust * 4500);
+    } else {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_yaw_out, _yaw_in_ff * 4500);
+    }
     SRV_Channels::set_output_scaled(SRV_Channel::k_thrust_out, get_throttle() * 1000);
 }
 

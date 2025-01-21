@@ -28,6 +28,7 @@
 // control of all multicopter designs in order to allow us to control yaw
 // separately with a tail fin.
 #define DIFF_YAW_ENABLED 0
+#define EXTERNAL_YAW_CONTROL (DIFF_YAW_ENABLED == 0)
 
 // this is for if we're using indoor flight with no compass, but it was
 // determined this is not necessary.
