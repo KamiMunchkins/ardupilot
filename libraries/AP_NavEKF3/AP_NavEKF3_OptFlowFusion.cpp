@@ -8,6 +8,7 @@
 
 #include <GCS_MAVLink/GCS.h>
 #include <AP_DAL/AP_DAL.h>
+#include "../../ArduCopter/custom_config.h"
 
 /********************************************************
 *                   RESET FUNCTIONS                     *
@@ -119,6 +120,16 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             ftype q1 = stateStruct.quat[1]; // quaternion at optical flow measurement time
             ftype q2 = stateStruct.quat[2]; // quaternion at optical flow measurement time
             ftype q3 = stateStruct.quat[3]; // quaternion at optical flow measurement time
+            if(DISABLE_SENSOR_ROTATION) {
+              Vector3F eulerAngles;
+              QuaternionF tmpQuat;
+              stateStruct.quat.to_euler(eulerAngles);
+              tmpQuat.from_euler(0, 0, eulerAngles.z);
+              q0 = tmpQuat[0];
+              q1 = tmpQuat[1];
+              q2 = tmpQuat[2];
+              q3 = tmpQuat[3];
+            }
 
             // Set range finder measurement noise variance. TODO make this a function of range and tilt to allow for sensor, alignment and AHRS errors
             ftype R_RNG = frontend->_rngNoise;
@@ -169,6 +180,16 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
             ftype K_OPT;
             ftype H_OPT;
             Vector2F auxFlowObsInnovVar;
+            if(DISABLE_SENSOR_ROTATION) {
+              Vector3F eulerAngles;
+              QuaternionF tmpQuat;
+              stateStruct.quat.to_euler(eulerAngles);
+              tmpQuat.from_euler(0, 0, eulerAngles.z);
+              q0 = tmpQuat[0];
+              q1 = tmpQuat[1];
+              q2 = tmpQuat[2];
+              q3 = tmpQuat[3];
+            }
 
             // predict range to centre of image
             ftype flowRngPred = MAX((terrainState - stateStruct.position.z),rngOnGnd) / prevTnb.c.z;
@@ -289,6 +310,16 @@ void NavEKF3_core::FuseOptFlow(const of_elements &ofDataDelayed, bool really_fus
     ftype q1 = stateStruct.quat[1];
     ftype q2 = stateStruct.quat[2];
     ftype q3 = stateStruct.quat[3];
+    if(DISABLE_SENSOR_ROTATION) {
+      Vector3F eulerAngles;
+      QuaternionF tmpQuat;
+      stateStruct.quat.to_euler(eulerAngles);
+      tmpQuat.from_euler(0, 0, eulerAngles.z);
+      q0 = tmpQuat[0];
+      q1 = tmpQuat[1];
+      q2 = tmpQuat[2];
+      q3 = tmpQuat[3];
+    }
     ftype vn = stateStruct.velocity.x;
     ftype ve = stateStruct.velocity.y;
     ftype vd = stateStruct.velocity.z;

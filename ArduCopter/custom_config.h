@@ -34,4 +34,9 @@
 // determined this is not necessary.
 #define VISODOM_PRIMARY_COMPASS false
 
+// NOT YET TESTED; this disables the assumption that optical flow and range
+// finder rotate along with the flight controller. Useful for our custom
+// airfame.
+#define DISABLE_SENSOR_ROTATION false
+
 #endif // CUSTOM_CONFIG_H
