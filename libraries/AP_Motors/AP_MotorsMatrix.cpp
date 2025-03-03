@@ -1250,48 +1250,12 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
     set_initialised_ok(false);
     bool success = true;
 
-    switch (frame_class) {
-#if AP_MOTORS_FRAME_QUAD_ENABLED
-    case MOTOR_FRAME_QUAD:
-        success = setup_quad_matrix(frame_type);
-        break;  // quad
-#endif //AP_MOTORS_FRAME_QUAD_ENABLED
-#if AP_MOTORS_FRAME_HEXA_ENABLED
-    case MOTOR_FRAME_HEXA:
-        success = setup_hexa_matrix(frame_type);
-        break;
-#endif //AP_MOTORS_FRAME_HEXA_ENABLED
-#if AP_MOTORS_FRAME_OCTA_ENABLED
-    case MOTOR_FRAME_OCTA:
-        success = setup_octa_matrix(frame_type);
-        break;
-#endif //AP_MOTORS_FRAME_OCTA_ENABLED
-#if AP_MOTORS_FRAME_OCTAQUAD_ENABLED
-    case MOTOR_FRAME_OCTAQUAD:
-        success = setup_octaquad_matrix(frame_type);
-        break;
-#endif //AP_MOTORS_FRAME_OCTAQUAD_ENABLED
-#if AP_MOTORS_FRAME_DODECAHEXA_ENABLED
-    case MOTOR_FRAME_DODECAHEXA:
-        success = setup_dodecahexa_matrix(frame_type);
-        break;
-#endif //AP_MOTORS_FRAME_DODECAHEXA_ENABLED
-#if AP_MOTORS_FRAME_Y6_ENABLED
-    case MOTOR_FRAME_Y6:
-        success = setup_y6_matrix(frame_type);
-        break;
-#endif //AP_MOTORS_FRAME_Y6_ENABLED
-#if AP_MOTORS_FRAME_DECA_ENABLED
-    case MOTOR_FRAME_DECA:
-        success = setup_deca_matrix(frame_type);
-        break;
-#endif //AP_MOTORS_FRAME_DECA_ENABLED
-    default:
-        // matrix doesn't support the configured class
-        success = false;
-        _mav_type = MAV_TYPE_GENERIC;
-        break;
-    } // switch frame_class
+    add_motor_raw(AP_MOTORS_MOT_1, 0, 0.787, 0, 1);
+    add_motor_raw(AP_MOTORS_MOT_2, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 2);
+    add_motor_raw(AP_MOTORS_MOT_3, 0, 0.787, 0, 3);
+    add_motor_raw(AP_MOTORS_MOT_4, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 4);
+    add_motor_raw(AP_MOTORS_MOT_5, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 5);
+    add_motor_raw(AP_MOTORS_MOT_6, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 6);
 
     // normalise factors to magnitude 0.5
     normalise_rpy_factors();

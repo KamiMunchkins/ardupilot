@@ -1,5 +1,5 @@
-/*
-  copter specific AP_AdvancedFailsafe class
+/* 
+copter specific AP_AdvancedFailsafe class
  */
 
 #include "Copter.h"
