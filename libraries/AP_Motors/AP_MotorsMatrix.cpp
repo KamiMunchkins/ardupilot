@@ -1250,12 +1250,12 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
     set_initialised_ok(false);
     bool success = true;
 
-    add_motor_raw(AP_MOTORS_MOT_1, 0, 0.787, 0, 1);
-    add_motor_raw(AP_MOTORS_MOT_2, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 2);
-    add_motor_raw(AP_MOTORS_MOT_3, 0, 0.787, 0, 3);
-    add_motor_raw(AP_MOTORS_MOT_4, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 4);
-    add_motor_raw(AP_MOTORS_MOT_5, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 5);
-    add_motor_raw(AP_MOTORS_MOT_6, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 6);
+    add_motor_raw(AP_MOTORS_MOT_1, 0, 0.787, 0, 6);
+    add_motor_raw(AP_MOTORS_MOT_2, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 1);
+    add_motor_raw(AP_MOTORS_MOT_3, 0, 0.787, 0, 8);
+    add_motor_raw(AP_MOTORS_MOT_4, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 2);
+    add_motor_raw(AP_MOTORS_MOT_5, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 3);
+    add_motor_raw(AP_MOTORS_MOT_6, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 4);
 
     // normalise factors to magnitude 0.5
     normalise_rpy_factors();
