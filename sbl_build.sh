@@ -1,8 +1,5 @@
 # git submodule update --init --recursive
-BOARD=FlywooF745
-BOARD=CubeOrangePlus
-BOARD=mRoControlZeroH7
-BOARD=MatekH743
+BOARD=MatekH7A3
 echo "building for $BOARD"
 #./waf configure --board $BOARD
 #./waf distclean
