@@ -70,6 +70,7 @@ void AP_Motors::get_frame_and_type_string(char *buffer, uint8_t buflen) const
     } else {
         hal.util->snprintf(buffer, buflen, "Frame: %s", frame_str);
     }
+    // hal.util->snprintf(buffer, buflen, "SBL AP_Motors get_frame_and_type");
 }
 
 void AP_Motors::armed(bool arm)
@@ -104,10 +105,10 @@ void AP_Motors::set_radio_passthrough(float roll_input, float pitch_input, float
  */
 void AP_Motors::rc_write(uint8_t chan, uint16_t pwm)
 {
-    SRV_Channel::Function function = SRV_Channels::get_motor_function(chan);
-    if ((1U<<chan) & _motor_pwm_scaled.mask) {
+    SRV_Channel::Aux_servo_function_t function = SRV_Channels::get_motor_function(chan);
+    if ((1U<<chan) & _motor_pwm_range_mask) {
         // note that PWM_MIN/MAX has been forced to 1000/2000
-        SRV_Channels::set_output_scaled(function, float(pwm) - _motor_pwm_scaled.offset);
+        SRV_Channels::set_output_scaled(function, pwm - 1000);
     } else {
         SRV_Channels::set_output_pwm(function, pwm);
     }
@@ -118,7 +119,7 @@ void AP_Motors::rc_write(uint8_t chan, uint16_t pwm)
  */
 void AP_Motors::rc_write_angle(uint8_t chan, int16_t angle_cd)
 {
-    SRV_Channel::Function function = SRV_Channels::get_motor_function(chan);
+    SRV_Channel::Aux_servo_function_t function = SRV_Channels::get_motor_function(chan);
     SRV_Channels::set_output_scaled(function, angle_cd);
 }
 
@@ -135,60 +136,41 @@ void AP_Motors::rc_set_freq(uint32_t motor_mask, uint16_t freq_hz)
     hal.rcout->set_freq(mask, freq_hz);
     hal.rcout->set_dshot_esc_type(SRV_Channels::get_dshot_esc_type());
 
-    const PWMType type = _pwm_type;
-    switch (type) {
-    case PWMType::ONESHOT:
+    switch (pwm_type(_pwm_type.get())) {
+    case PWM_TYPE_ONESHOT:
         if (freq_hz > 50 && mask != 0) {
             hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_ONESHOT);
         }
         break;
-    case PWMType::ONESHOT125:
+    case PWM_TYPE_ONESHOT125:
         if (freq_hz > 50 && mask != 0) {
             hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_ONESHOT125);
         }
         break;
-    case PWMType::BRUSHED:
+    case PWM_TYPE_BRUSHED:
         hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_BRUSHED);
         break;
-    case PWMType::DSHOT150:
+    case PWM_TYPE_DSHOT150:
         hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_DSHOT150);
         break;
-    case PWMType::DSHOT300:
+    case PWM_TYPE_DSHOT300:
         hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_DSHOT300);
         break;
-    case PWMType::DSHOT600:
+    case PWM_TYPE_DSHOT600:
         hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_DSHOT600);
         break;
-    case PWMType::DSHOT1200:
+    case PWM_TYPE_DSHOT1200:
         hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_DSHOT1200);
         break;
-    case PWMType::PWM_RANGE:
-    case PWMType::PWM_ANGLE:
+    case PWM_TYPE_PWM_RANGE:
         /*
           this is a motor output type for multirotors which honours
-          the SERVOn_MIN/MAX (and TRIM for angle) values per channel
-
-          Motor PWM min and max are hard coded to 1000 to 2000.
-          Range type offsets by 1000 to get 0 to 1000.
-          Angle type offsets by 1500 to get -500 to 500.
+          the SERVOn_MIN/MAX values per channel
          */
-
-        if (type == PWMType::PWM_RANGE) {
-            _motor_pwm_scaled.offset = 1000.0;
-        } else {
-            // PWMType::PWM_ANGLE
-            _motor_pwm_scaled.offset = 1500.0;
-        }
-
-        _motor_pwm_scaled.mask |= motor_mask;
+        _motor_pwm_range_mask |= motor_mask;
         for (uint8_t i=0; i<16; i++) {
             if ((1U<<i) & motor_mask) {
-                if (type == PWMType::PWM_RANGE) {
-                    SRV_Channels::set_range(SRV_Channels::get_motor_function(i), 1000);
-                } else {
-                    // PWMType::PWM_ANGLE
-                    SRV_Channels::set_angle(SRV_Channels::get_motor_function(i), 500);
-                }
+                SRV_Channels::set_range(SRV_Channels::get_motor_function(i), 1000);
             }
         }
         hal.rcout->set_output_mode(mask, AP_HAL::RCOutput::MODE_PWM_NORMAL);
@@ -210,7 +192,7 @@ uint32_t AP_Motors::motor_mask_to_srv_channel_mask(uint32_t mask) const
     for (uint8_t i = 0; i < 32; i++) {
         uint32_t bit = 1UL << i;
         if (mask & bit) {
-            SRV_Channel::Function function = SRV_Channels::get_motor_function(i);
+            SRV_Channel::Aux_servo_function_t function = SRV_Channels::get_motor_function(i);
             mask2 |= SRV_Channels::get_output_channel_mask(function);
         }
     }
@@ -224,7 +206,7 @@ void AP_Motors::add_motor_num(int8_t motor_num)
 {
     // ensure valid motor number is provided
     if (motor_num >= 0 && motor_num < AP_MOTORS_MAX_NUM_MOTORS) {
-        SRV_Channel::Function function = SRV_Channels::get_motor_function(motor_num);
+        SRV_Channel::Aux_servo_function_t function = SRV_Channels::get_motor_function(motor_num);
         SRV_Channels::set_aux_channel_default(function, motor_num);
     }
 }
@@ -251,19 +233,18 @@ void AP_Motors::set_external_limits(bool roll, bool pitch, bool yaw, bool thrott
 // returns true if the configured PWM type is digital and should have fixed endpoints
 bool AP_Motors::is_digital_pwm_type() const
 {
-    switch ((PWMType)_pwm_type) {
-    case PWMType::DSHOT150:
-    case PWMType::DSHOT300:
-    case PWMType::DSHOT600:
-    case PWMType::DSHOT1200:
-        return true;
-    case PWMType::NORMAL:
-    case PWMType::ONESHOT:
-    case PWMType::ONESHOT125:
-    case PWMType::BRUSHED:
-    case PWMType::PWM_RANGE:
-    case PWMType::PWM_ANGLE:
-        break;
+    switch (_pwm_type) {
+        case PWM_TYPE_DSHOT150:
+        case PWM_TYPE_DSHOT300:
+        case PWM_TYPE_DSHOT600:
+        case PWM_TYPE_DSHOT1200:
+            return true;
+        case PWM_TYPE_NORMAL:
+        case PWM_TYPE_ONESHOT:
+        case PWM_TYPE_ONESHOT125:
+        case PWM_TYPE_BRUSHED:
+        case PWM_TYPE_PWM_RANGE:
+            break;
     }
     return false;
 }
@@ -286,7 +267,7 @@ void AP_Motors::set_frame_string(const char * str) {
         return;
     }
     const size_t len = strlen(str)+1;
-    custom_frame_string = NEW_NOTHROW char[len];
+    custom_frame_string = new char[len];
     if (custom_frame_string != nullptr) {
         strncpy(custom_frame_string, str, len);
     }
