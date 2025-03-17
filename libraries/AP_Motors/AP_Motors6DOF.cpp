@@ -20,6 +20,31 @@
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_HAL/AP_HAL.h>
 #include "AP_Motors6DOF.h"
+#include <GCS_MAVLink/GCS.h>
+
+#include "../../ArduCopter/custom_config.h"
+
+uint32_t lastLogTime6 = 0;
+#define DEAD_BAND 0.05
+#define LOG_PERIOD 3000
+        /*
+        bool debug = false;
+        uint32_t now = AP_HAL::millis();
+        if(now - lastLogTime6 > LOG_PERIOD) {
+            lastLogTime6 = now;
+            debug = true;
+        }
+        if(debug) {
+                gcs().send_text(MAV_SEVERITY_INFO, "SBL forward_in was %.2f", _forward_in);
+        }
+        */
+
+// SBL added this, everything else was hardcoded to 1500
+
+// reversible quad motors for a balloon so we can for pitching down
+// config4 vs config8. A config4 setup means we need to yaw by reversing the
+// motors.
+
 
 extern const AP_HAL::HAL& hal;
 
@@ -101,7 +126,7 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
     // @DisplayName: Motor normal or reverse
     // @Description: Used to change motor rotation directions without changing wires
     // @Values: 1:normal,-1:reverse
-    // @User: Standard
+    // @User: Standagd
     AP_GROUPINFO("10_DIRECTION", 11, AP_Motors6DOF, _motor_reverse[9], 1),
 
     // @Param: 11_DIRECTION
@@ -121,12 +146,87 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
     AP_GROUPEND
 };
 
+bool AP_Motors6DOF::init(uint8_t expected_num_motors) {
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside custom init func, expected motors %d", expected_num_motors);
+
+    // SBL hard-coded
+    int wantMotors = 12;
+    if(LATERAL_MOTORS_CONFIG4) {
+      wantMotors = 8;
+    }
+    uint8_t num_motors = 0;
+    for(uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+        if (motor_enabled[i]) {
+            num_motors++;
+        }
+    }
+    set_initialised_ok(wantMotors == num_motors);
+
+    if (!initialised_ok()) {
+        //gcs().send_text(MAV_SEVERITY_WARNING,"SBL init FAIL");
+        return false;
+    }
+    set_update_rate(_speed_hz);
+    //gcs().send_text(MAV_SEVERITY_WARNING,"SBL init SUCCESS");
+
+    return true;
+}
+
 void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type frame_type)
 {
+    set_initialised_ok(false);
     // remove existing motors
     for (int8_t i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         remove_motor(i);
     }
+
+    int wantMotors = 12;
+    if(LATERAL_MOTORS_CONFIG4) {
+      wantMotors = 8;
+    }
+    for(int i=0; i < wantMotors; i++) {
+        _motor_reverse[i].set_and_save(1);
+    }
+    _frame_class_string = "EBlimp Custom";
+    // 1, what should the throttle factor be for all of these? I believe 1
+    // add_motor_raw_6dof(motNum, roll, pitch, yaw, throttle, forward, lateral, testOrder);
+    float noForward = 0;
+    float noLateral = 0;
+    float noRoll = 0;
+    float noPitch = 0;
+    float noYaw = 0;
+
+    // these yaw factors tested and verified
+    float yawFactorCCW = -1.0;
+    float yawFactorCW = 1.0;
+    //gcs().send_text(MAV_SEVERITY_WARNING,"SBL CUSTOM MOTOR SETUP");
+
+    // SBL CUSTOM MOTOR FRAME
+    // top left
+    // should be spinning CCW
+
+    float pitchDown = 1.0;
+    float rollRight = 1.0;
+    float forward = 1.0;
+    float lateral = 1.0;
+    // top left
+    add_motor_raw_6dof(AP_MOTORS_MOT_1, rollRight, noPitch, yawFactorCCW, 1.0, noForward, noLateral, 1);
+    // top right
+    add_motor_raw_6dof(AP_MOTORS_MOT_2, -rollRight, noPitch, yawFactorCW, 1.0, noForward, noLateral, 2);
+    // bottom right
+    add_motor_raw_6dof(AP_MOTORS_MOT_3, -rollRight, noPitch, yawFactorCCW, 1.0, noForward, noLateral, 3);
+    // bottom left
+    add_motor_raw_6dof(AP_MOTORS_MOT_4, rollRight, noPitch, yawFactorCW, 1.0, noForward, noLateral, 4);
+
+        // back left
+        add_motor_raw_6dof(AP_MOTORS_MOT_7, noRoll, pitchDown, noYaw, 0.0, forward, noLateral, 7);
+        // back right
+        add_motor_raw_6dof(AP_MOTORS_MOT_8, noRoll, pitchDown, noYaw, 0.0, forward, noLateral, 8);
+
+    }
+    set_initialised_ok(true);
+
+    return;
 
     // hard coded config for supported frames
     switch ((sub_frame_t)frame_class) {
@@ -176,13 +276,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         break;
 
     case SUB_FRAME_CUSTOM:
-        //add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              1.0f,           0,                  -1.0f,              1.0f,           1);
-        //add_motor_raw_6dof(AP_MOTORS_MOT_2,     0,              0,              -1.0f,          0,                  -1.0f,              -1.0f,          2);
-        //add_motor_raw_6dof(AP_MOTORS_MOT_3,     0,              0,              -1.0f,          0,                  1.0f,               1.0f,           3);
-        //add_motor_raw_6dof(AP_MOTORS_MOT_4,     0,              0,              1.0f,           0,                  1.0f,               -1.0f,          4);
-        //add_motor_raw_6dof(AP_MOTORS_MOT_5,     1.0f,           0,              0,              -1.0f,              0,                  0,              5);
-        //add_motor_raw_6dof(AP_MOTORS_MOT_6,     -1.0f,          0,              0,              -1.0f,              0,                  0,              6);
-
+        // Put your custom motor setup here
         //break;
 
     case SUB_FRAME_SIMPLEROV_3:
@@ -229,18 +323,44 @@ void AP_Motors6DOF::output_min()
 
     // fill the motor_out[] array for HIL use and send minimum value to each motor
     // ToDo find a field to store the minimum pwm instead of hard coding 1500
+    // SBL redundant code
+    // NOTE rc_write() usage vs motor_out[i] = ; this tripped me up earlier
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            rc_write(i, 1500);
+            if(i < 4) {
+              if(LIFTING_MOTORS_REVERSIBLE) {
+                rc_write(i, MOT_SPIN_NEUTRAL);
+              } else {
+                rc_write(i, MOT_SPIN_MIN);
+              }
+            } else {
+              if(LATERAL_MOTORS_CONFIG4) {
+                rc_write(i, MOT_SPIN_NEUTRAL);
+              } else {
+                rc_write(i, MOT_SPIN_MIN);
+              }
+            }
         }
     }
 }
 
-int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in) const
+int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in, bool reversible) const
 {
-    int16_t range_up = get_pwm_output_max() - 1500;
-    int16_t range_down = 1500 - get_pwm_output_min();
-    return 1500 + thrust_in * (thrust_in > 0 ? range_up : range_down);
+    if(!reversible) {
+        // SBL modified this.
+        int16_t minPwm = get_pwm_output_min();
+        if(thrust_in <= 0) {
+            return minPwm;
+        }
+        int16_t interp_range = get_pwm_output_max() - get_pwm_output_min();
+        return (thrust_in * interp_range) + minPwm;
+    }
+    if(abs(thrust_in) <= DEAD_BAND) {
+        thrust_in = 0;
+    }
+    int16_t range_up = get_pwm_output_max() - MOT_SPIN_NEUTRAL;
+    int16_t range_down = MOT_SPIN_NEUTRAL - get_pwm_output_min();
+    return MOT_SPIN_NEUTRAL + thrust_in * (thrust_in > 0 ? range_up : range_down);
 }
 
 void AP_Motors6DOF::output_to_motors()
@@ -253,16 +373,42 @@ void AP_Motors6DOF::output_to_motors()
         // sends minimum values out to the motors
         // set motor output based on thrust requests
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            // SBL redundant code
             if (motor_enabled[i]) {
-                motor_out[i] = 1500;
+                if(i < 4) {
+                  if(LIFTING_MOTORS_REVERSIBLE) {
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
+                  } else {
+                    motor_out[i] = MOT_SPIN_MIN;
+                  }
+                } else {
+                  if(LATERAL_MOTORS_CONFIG4) {
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
+                  } else {
+                    motor_out[i] = MOT_SPIN_MIN;
+                  }
+                }
             }
         }
         break;
     case SpoolState::GROUND_IDLE:
         // sends output to motors when armed but not flying
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            // SBL redundant code
             if (motor_enabled[i]) {
-                motor_out[i] = 1500;
+                if(i < 4) {
+                  if(LIFTING_MOTORS_REVERSIBLE) {
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
+                  } else {
+                    motor_out[i] = MOT_SPIN_MIN;
+                  }
+                } else {
+                  if(LATERAL_MOTORS_CONFIG4) {
+                    motor_out[i] = MOT_SPIN_NEUTRAL;
+                  } else {
+                    motor_out[i] = MOT_SPIN_MIN;
+                  }
+                }
             }
         }
         break;
@@ -272,7 +418,11 @@ void AP_Motors6DOF::output_to_motors()
         // set motor output based on thrust requests
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-                motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i]);
+                if(i < 4) {
+                    motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], LIFTING_MOTORS_REVERSIBLE);
+                } else {
+                    motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], LATERAL_MOTORS_CONFIG4);
+                }
             }
         }
         break;
@@ -297,23 +447,33 @@ float AP_Motors6DOF::get_current_limit_max_throttle()
 // ToDo calculate headroom for rpy to be added for stabilization during full throttle/forward/lateral commands
 void AP_Motors6DOF::output_armed_stabilizing()
 {
-    if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED) {
-        output_armed_stabilizing_vectored();
-    } else if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED_6DOF) {
-        output_armed_stabilizing_vectored_6dof();
+    // SBL output case 3
+    if(false) {
+        // SBL DELETE THESE CASES
+        if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED) {
+            output_armed_stabilizing_vectored();
+        } else if ((sub_frame_t)_active_frame_class == SUB_FRAME_VECTORED_6DOF) {
+            output_armed_stabilizing_vectored_6dof();
+        }
     } else {
         uint8_t i;                          // general purpose counter
         float   roll_thrust;                // roll thrust input value, +/- 1.0
         float   pitch_thrust;               // pitch thrust input value, +/- 1.0
         float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
         float   throttle_thrust;            // throttle thrust input value, +/- 1.0
+        // NOTE forward and lateral thrust are actually +/- 0.5
         float   forward_thrust;             // forward thrust input value, +/- 1.0
         float   lateral_thrust;             // lateral thrust input value, +/- 1.0
 
         roll_thrust = (_roll_in + _roll_in_ff);
         pitch_thrust = (_pitch_in + _pitch_in_ff);
         yaw_thrust = (_yaw_in + _yaw_in_ff);
-        throttle_thrust = get_throttle_bidirectional();
+        if(LIFTING_MOTORS_REVERSIBLE) {
+            throttle_thrust = get_throttle_bidirectional();
+        } else {
+            const float compensation_gain = thr_lin.get_compensation_gain(); // compensation for battery voltage and altitude
+            throttle_thrust = get_throttle() * compensation_gain;
+        }
         forward_thrust = _forward_in;
         lateral_thrust = _lateral_in;
 
@@ -328,14 +488,34 @@ void AP_Motors6DOF::output_armed_stabilizing()
         limit.throttle_upper = false;
 
         // sanity check throttle is above zero and below current limited throttle
-        if (throttle_thrust <= -_throttle_thrust_max) {
-            throttle_thrust = -_throttle_thrust_max;
-            limit.throttle_lower = true;
+        if(LIFTING_MOTORS_REVERSIBLE) {
+            if (throttle_thrust <= -_throttle_thrust_max) {
+                throttle_thrust = -_throttle_thrust_max;
+                limit.throttle_lower = true;
+            }
+        } else {
+            // SBL MODIFYING THIS CASE BECAUSE FOR NON-REVERSIBLE MOTORS
+            if (throttle_thrust <= 0) {
+                throttle_thrust = 0;
+                limit.throttle_lower = true;
+            }
+            if (throttle_thrust >= _throttle_thrust_max) {
+                throttle_thrust = _throttle_thrust_max;
+                limit.throttle_upper = true;
+            }
         }
-        if (throttle_thrust >= _throttle_thrust_max) {
-            throttle_thrust = _throttle_thrust_max;
-            limit.throttle_upper = true;
+
+        // SBL hard-coded
+        // This is to elminate motor saturation. Max forward_in is 0.5,
+        // so limiting to 0.5 prevents some motors getting saturated while others are not.
+        if(yaw_thrust > 0.5) {
+            yaw_thrust = 0.5;
+            limit.yaw = true;
+        } else if (yaw_thrust < -0.5) {
+            yaw_thrust = -0.5;
+            limit.yaw = true;
         }
+
 
         // calculate roll, pitch and yaw for each motor
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
@@ -346,14 +526,32 @@ void AP_Motors6DOF::output_armed_stabilizing()
 
             }
         }
+        // SBL need to modify here. What's happening is that we have poor yaw control because some motors on opposing side of the
+        // running motors are negative, and therefore yaw has to overcome this negative value before they even activate.
+        // 2 cases to account for:
+        // 1. Yaw isn't activating if one side of motors is running
+        //    This can be fixed by setting forward_thrust to 0 if it is negative when multiplied by forward factor
+        // 2. Forward and lateral max out at 1500 PWM.
+        //
+
 
         // calculate linear command for each motor
         // linear factors should be 0.0 or 1.0 for now
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
+                float local_forward_thrust = forward_thrust;
+                float local_lateral_thrust = lateral_thrust;
+                if(!LATERAL_MOTORS_CONFIG4) {
+                    if(local_forward_thrust * _forward_factor[i] < 0) {
+                        local_forward_thrust = 0;
+                    }
+                    if (local_lateral_thrust * _lateral_factor[i] < 0) {
+                        local_lateral_thrust = 0;
+                    }
+                }
                 linear_out[i] = throttle_thrust * _throttle_factor[i] +
-                                forward_thrust * _forward_factor[i] +
-                                lateral_thrust * _lateral_factor[i];
+                                local_forward_thrust * _forward_factor[i] +
+                                local_lateral_thrust * _lateral_factor[i];
             }
         }
 
@@ -365,7 +563,6 @@ void AP_Motors6DOF::output_armed_stabilizing()
         }
     }
 
-#if AP_BATTERY_ENABLED
     const AP_BattMonitor &battery = AP::battery();
 
 	// Current limiting
@@ -391,7 +588,6 @@ void AP_Motors6DOF::output_armed_stabilizing()
         batt_current_ratio = predicted_current_ratio;
     }
     _output_limited += (_dt / (_dt + _batt_current_time_constant)) * (1 - batt_current_ratio);
-#endif
 
     _output_limited = constrain_float(_output_limited, 0.0f, 1.0f);
 
@@ -408,6 +604,7 @@ void AP_Motors6DOF::output_armed_stabilizing()
 // ToDo calculate headroom for rpy to be added for stabilization during full throttle/forward/lateral commands
 void AP_Motors6DOF::output_armed_stabilizing_vectored()
 {
+    // SBL output case 1 UNUSED
     uint8_t i;                          // general purpose counter
     float   roll_thrust;                // roll thrust input value, +/- 1.0
     float   pitch_thrust;               // pitch thrust input value, +/- 1.0
@@ -493,6 +690,7 @@ void AP_Motors6DOF::output_armed_stabilizing_vectored()
 // TODO: find a global solution for managing saturation that works for all vehicles
 void AP_Motors6DOF::output_armed_stabilizing_vectored_6dof()
 {
+    // SBL output case 2 UNUSED
     uint8_t i;                          // general purpose counter
     float   roll_thrust;                // roll thrust input value, +/- 1.0
     float   pitch_thrust;               // pitch thrust input value, +/- 1.0
@@ -504,7 +702,13 @@ void AP_Motors6DOF::output_armed_stabilizing_vectored_6dof()
     roll_thrust = (_roll_in + _roll_in_ff);
     pitch_thrust = (_pitch_in + _pitch_in_ff);
     yaw_thrust = (_yaw_in + _yaw_in_ff);
-    throttle_thrust = get_throttle_bidirectional();
+    if(LIFTING_MOTORS_REVERSIBLE) {
+        throttle_thrust = get_throttle_bidirectional();
+    } else {
+        // SBL modified here
+        const float compensation_gain = thr_lin.get_compensation_gain(); // compensation for battery voltage and altitude
+        throttle_thrust = get_throttle() * compensation_gain;
+    }
     forward_thrust = _forward_in;
     lateral_thrust = _lateral_in;
 
