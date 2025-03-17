@@ -1,12 +1,29 @@
 #include "Copter.h"
 #include <AP_ESC_Telem/AP_ESC_Telem.h>
 
+// SBL add
+#include <GCS_MAVLink/GCS_MAVLink.h>    // MAVLink GCS definitions
+#include <AP_HAL/AP_HAL.h>
+
 /*****************************************************************************
 *   The init_ardupilot function processes everything we need for an in - air restart
 *        We will determine later if we are actually on the ground and process a
 *        ground start in that case.
 *
 *****************************************************************************/
+
+bool debugSet2 = false;
+/*
+static void sleepv2(uint32_t delta) {
+    uint32_t start = AP_HAL::millis();
+    while(0) {
+        uint32_t now = AP_HAL::millis();
+        if (now-start > delta) {
+            return;
+        }
+    }
+}
+*/
 
 static void failsafe_check_static()
 {
@@ -15,6 +32,22 @@ static void failsafe_check_static()
 
 void Copter::init_ardupilot()
 {
+
+#if STATS_ENABLED == ENABLED
+    // initialise stats module
+    g2.stats.init();
+#endif
+
+    BoardConfig.init();
+#if HAL_MAX_CAN_PROTOCOL_DRIVERS
+    can_mgr.init();
+#endif
+
+    // init cargo gripper
+#if AP_GRIPPER_ENABLED
+    g2.gripper.init();
+#endif
+
     // init winch
 #if AP_WINCH_ENABLED
     g2.winch.init();
@@ -27,18 +60,20 @@ void Copter::init_ardupilot()
     // initialise battery monitor
     battery.init();
 
-#if AP_RSSI_ENABLED
     // Init RSSI
     rssi.init();
-#endif
 
     barometer.init();
 
     // setup telem slots with serial ports
     gcs().setup_uarts();
 
-#if OSD_ENABLED
+#if OSD_ENABLED == ENABLED
     osd.init();
+#endif
+
+#if HAL_LOGGING_ENABLED
+    log_init();
 #endif
 
     // update motor interlock state
@@ -54,11 +89,9 @@ void Copter::init_ardupilot()
 
     init_rc_in();               // sets up rc channels from radio
 
-#if AP_RANGEFINDER_ENABLED
     // initialise surface to be tracked in SurfaceTracking
     // must be before rc init to not override initial switch position
     surface_tracking.init((SurfaceTracking::Surface)copter.g2.surftrak_mode.get());
-#endif
 
     // allocate the motors class
     allocate_motors();
@@ -68,6 +101,7 @@ void Copter::init_ardupilot()
     rc().init();
 
     // sets up motors and output to escs
+    // gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT RC OUT system");
     init_rc_out();
 
     // check if we should enter esc calibration mode
@@ -88,7 +122,7 @@ void Copter::init_ardupilot()
 
     // Do GPS init
     gps.set_log_gps_bit(MASK_LOG_GPS);
-    gps.init();
+    gps.init(serial_manager);
 
     AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
@@ -97,7 +131,7 @@ void Copter::init_ardupilot()
     airspeed.set_log_bit(MASK_LOG_IMU);
 #endif
 
-#if AP_OAPATHPLANNER_ENABLED
+#if AC_OAPATHPLANNER_ENABLED == ENABLED
     g2.oa.init();
 #endif
 
@@ -137,7 +171,7 @@ void Copter::init_ardupilot()
     barometer.set_log_baro_bit(MASK_LOG_IMU);
     barometer.calibrate();
 
-#if AP_RANGEFINDER_ENABLED
+#if RANGEFINDER_ENABLED == ENABLED
     // initialise rangefinder
     init_rangefinder();
 #endif
@@ -157,27 +191,29 @@ void Copter::init_ardupilot()
     rpm_sensor.init();
 #endif
 
-#if MODE_AUTO_ENABLED
+#if MODE_AUTO_ENABLED == ENABLED
     // initialise mission library
     mode_auto.mission.init();
-#if HAL_LOGGING_ENABLED
-    mode_auto.mission.set_log_start_mission_item_bit(MASK_LOG_CMD);
-#endif
 #endif
 
-#if MODE_SMARTRTL_ENABLED
+#if MODE_SMARTRTL_ENABLED == ENABLED
     // initialize SmartRTL
     g2.smart_rtl.init();
 #endif
 
 #if HAL_LOGGING_ENABLED
     // initialise AP_Logger library
+    // SBL this is the line that does work with logging
     logger.setVehicle_Startup_Writer(FUNCTOR_BIND(&copter, &Copter::Log_Write_Vehicle_Startup_Messages, void));
 #endif
 
     startup_INS_ground();
 
-#if AC_CUSTOMCONTROL_MULTI_ENABLED
+#if AP_SCRIPTING_ENABLED
+    g2.scripting.init();
+#endif // AP_SCRIPTING_ENABLED
+
+#if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
     custom_control.init();
 #endif
 
@@ -200,9 +236,15 @@ void Copter::init_ardupilot()
 
     pos_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
     vel_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
+    hgt_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
 
     // flag that initialisation has completed
     ap.initialised = true;
+    if(debugSet2) {
+        //gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT SUCCESS system");
+    } else {
+        //gcs().send_text(MAV_SEVERITY_INFO,"SBL INIT FAIL system");
+    }
 }
 
 
@@ -324,7 +366,7 @@ void Copter::update_auto_armed()
 
     }else{
         // arm checks
-        
+
         // for tradheli if motors are armed and throttle is above zero and the motor is started, auto_armed should be true
         if(motors->armed() && ap.using_interlock) {
             if(!ap.throttle_zero && motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
@@ -346,6 +388,7 @@ void Copter::update_auto_armed()
  */
 bool Copter::should_log(uint32_t mask)
 {
+    ap.logging_started = logger.logging_started();
     return logger.should_log(mask);
 }
 #endif
@@ -355,70 +398,79 @@ bool Copter::should_log(uint32_t mask)
  */
 void Copter::allocate_motors(void)
 {
-    switch ((AP_Motors::motor_frame_class)g2.frame_class.get()) {
-#if FRAME_CONFIG != HELI_FRAME
-        case AP_Motors::MOTOR_FRAME_QUAD:
-        case AP_Motors::MOTOR_FRAME_HEXA:
-        case AP_Motors::MOTOR_FRAME_Y6:
-        case AP_Motors::MOTOR_FRAME_OCTA:
-        case AP_Motors::MOTOR_FRAME_OCTAQUAD:
-        case AP_Motors::MOTOR_FRAME_DODECAHEXA:
-        case AP_Motors::MOTOR_FRAME_DECA:
-        case AP_Motors::MOTOR_FRAME_SCRIPTING_MATRIX:
-        default:
-            motors = NEW_NOTHROW AP_MotorsMatrix(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsMatrix::var_info;
-            break;
-        case AP_Motors::MOTOR_FRAME_TRI:
-            motors = NEW_NOTHROW AP_MotorsTri(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsTri::var_info;
-            AP_Param::set_frame_type_flags(AP_PARAM_FRAME_TRICOPTER);
-            break;
-        case AP_Motors::MOTOR_FRAME_SINGLE:
-            motors = NEW_NOTHROW AP_MotorsSingle(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsSingle::var_info;
-            break;
-        case AP_Motors::MOTOR_FRAME_COAX:
-            motors = NEW_NOTHROW AP_MotorsCoax(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsCoax::var_info;
-            break;
-        case AP_Motors::MOTOR_FRAME_TAILSITTER:
-            motors = NEW_NOTHROW AP_MotorsTailsitter(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsTailsitter::var_info;
-            break;
-        case AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING:
-#if AP_SCRIPTING_ENABLED
-            motors = NEW_NOTHROW AP_MotorsMatrix_6DoF_Scripting(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsMatrix_6DoF_Scripting::var_info;
-#endif // AP_SCRIPTING_ENABLED
-            break;
-        case AP_Motors::MOTOR_FRAME_DYNAMIC_SCRIPTING_MATRIX:
-#if AP_SCRIPTING_ENABLED
-            motors = NEW_NOTHROW AP_MotorsMatrix_Scripting_Dynamic(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsMatrix_Scripting_Dynamic::var_info;
-#endif // AP_SCRIPTING_ENABLED
-            break;
-#else // FRAME_CONFIG == HELI_FRAME
-        case AP_Motors::MOTOR_FRAME_HELI_DUAL:
-            motors = NEW_NOTHROW AP_MotorsHeli_Dual(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsHeli_Dual::var_info;
-            AP_Param::set_frame_type_flags(AP_PARAM_FRAME_HELI);
-            break;
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL allocate motors");
+    motors = new AP_Motors6DOF(copter.scheduler.get_loop_rate_hz());
+    motors_var_info = AP_Motors6DOF::var_info;
+    debugSet2 = true;
 
-        case AP_Motors::MOTOR_FRAME_HELI_QUAD:
-            motors = NEW_NOTHROW AP_MotorsHeli_Quad(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsHeli_Quad::var_info;
-            AP_Param::set_frame_type_flags(AP_PARAM_FRAME_HELI);
-            break;
-            
-        case AP_Motors::MOTOR_FRAME_HELI:
-        default:
-            motors = NEW_NOTHROW AP_MotorsHeli_Single(copter.scheduler.get_loop_rate_hz());
-            motors_var_info = AP_MotorsHeli_Single::var_info;
-            AP_Param::set_frame_type_flags(AP_PARAM_FRAME_HELI);
-            break;
+    // SBL HACK
+    if(false) {
+
+        switch ((AP_Motors::motor_frame_class)g2.frame_class.get()) {
+#if FRAME_CONFIG != HELI_FRAME
+            case AP_Motors::MOTOR_FRAME_QUAD:
+            case AP_Motors::MOTOR_FRAME_HEXA:
+            case AP_Motors::MOTOR_FRAME_Y6:
+            case AP_Motors::MOTOR_FRAME_OCTA:
+            case AP_Motors::MOTOR_FRAME_OCTAQUAD:
+            case AP_Motors::MOTOR_FRAME_DODECAHEXA:
+            case AP_Motors::MOTOR_FRAME_DECA:
+            case AP_Motors::MOTOR_FRAME_SCRIPTING_MATRIX:
+            default:
+                motors = new AP_MotorsMatrix(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsMatrix::var_info;
+                break;
+            case AP_Motors::MOTOR_FRAME_TRI:
+                motors = new AP_MotorsTri(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsTri::var_info;
+                AP_Param::set_frame_type_flags(AP_PARAM_FRAME_TRICOPTER);
+                break;
+            case AP_Motors::MOTOR_FRAME_SINGLE:
+                motors = new AP_MotorsSingle(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsSingle::var_info;
+                break;
+            case AP_Motors::MOTOR_FRAME_COAX:
+                motors = new AP_MotorsCoax(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsCoax::var_info;
+                break;
+            case AP_Motors::MOTOR_FRAME_TAILSITTER:
+                motors = new AP_MotorsTailsitter(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsTailsitter::var_info;
+                break;
+            case AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING:
+#if AP_SCRIPTING_ENABLED
+                motors = new AP_MotorsMatrix_6DoF_Scripting(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsMatrix_6DoF_Scripting::var_info;
+#endif // AP_SCRIPTING_ENABLED
+                break;
+            case AP_Motors::MOTOR_FRAME_DYNAMIC_SCRIPTING_MATRIX:
+#if AP_SCRIPTING_ENABLED
+                motors = new AP_MotorsMatrix_Scripting_Dynamic(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsMatrix_Scripting_Dynamic::var_info;
+#endif // AP_SCRIPTING_ENABLED
+                break;
+#else // FRAME_CONFIG == HELI_FRAME
+            case AP_Motors::MOTOR_FRAME_HELI_DUAL:
+                motors = new AP_MotorsHeli_Dual(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsHeli_Dual::var_info;
+                AP_Param::set_frame_type_flags(AP_PARAM_FRAME_HELI);
+                break;
+
+            case AP_Motors::MOTOR_FRAME_HELI_QUAD:
+                motors = new AP_MotorsHeli_Quad(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsHeli_Quad::var_info;
+                AP_Param::set_frame_type_flags(AP_PARAM_FRAME_HELI);
+                break;
+
+            case AP_Motors::MOTOR_FRAME_HELI:
+            default:
+                motors = new AP_MotorsHeli_Single(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsHeli_Single::var_info;
+                AP_Param::set_frame_type_flags(AP_PARAM_FRAME_HELI);
+                break;
 #endif
-    }
+        }
+    } // SBL END HACK
     if (motors == nullptr) {
         AP_BoardConfig::allocation_error("FRAME_CLASS=%u", (unsigned)g2.frame_class.get());
     }
@@ -429,49 +481,54 @@ void Copter::allocate_motors(void)
         AP_BoardConfig::allocation_error("AP_AHRS_View");
     }
 
-#if FRAME_CONFIG != HELI_FRAME
-    if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING) {
-#if AP_SCRIPTING_ENABLED
-        attitude_control = NEW_NOTHROW AC_AttitudeControl_Multi_6DoF(*ahrs_view, aparm, *motors);
+    if(true) {
+        attitude_control = new AC_AttitudeControl_Multi_6DoF(*ahrs_view, aparm, *motors);
         attitude_control_var_info = AC_AttitudeControl_Multi_6DoF::var_info;
-#endif // AP_SCRIPTING_ENABLED
     } else {
-        attitude_control = NEW_NOTHROW AC_AttitudeControl_Multi(*ahrs_view, aparm, *motors);
-        attitude_control_var_info = AC_AttitudeControl_Multi::var_info;
-    }
+#if FRAME_CONFIG != HELI_FRAME
+        if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING) {
+#if AP_SCRIPTING_ENABLED
+            attitude_control = new AC_AttitudeControl_Multi_6DoF(*ahrs_view, aparm, *motors);
+            attitude_control_var_info = AC_AttitudeControl_Multi_6DoF::var_info;
+#endif // AP_SCRIPTING_ENABLED
+        } else {
+            attitude_control = new AC_AttitudeControl_Multi(*ahrs_view, aparm, *motors);
+            attitude_control_var_info = AC_AttitudeControl_Multi::var_info;
+        }
 #else
-    attitude_control = NEW_NOTHROW AC_AttitudeControl_Heli(*ahrs_view, aparm, *motors);
-    attitude_control_var_info = AC_AttitudeControl_Heli::var_info;
+        attitude_control = new AC_AttitudeControl_Heli(*ahrs_view, aparm, *motors);
+        attitude_control_var_info = AC_AttitudeControl_Heli::var_info;
 #endif
+    }
     if (attitude_control == nullptr) {
         AP_BoardConfig::allocation_error("AttitudeControl");
     }
     AP_Param::load_object_from_eeprom(attitude_control, attitude_control_var_info);
-        
-    pos_control = NEW_NOTHROW AC_PosControl(*ahrs_view, inertial_nav, *motors, *attitude_control);
+
+    pos_control = new AC_PosControl(*ahrs_view, inertial_nav, *motors, *attitude_control);
     if (pos_control == nullptr) {
         AP_BoardConfig::allocation_error("PosControl");
     }
     AP_Param::load_object_from_eeprom(pos_control, pos_control->var_info);
 
-#if AP_OAPATHPLANNER_ENABLED
-    wp_nav = NEW_NOTHROW AC_WPNav_OA(inertial_nav, *ahrs_view, *pos_control, *attitude_control);
+#if AC_OAPATHPLANNER_ENABLED == ENABLED
+    wp_nav = new AC_WPNav_OA(inertial_nav, *ahrs_view, *pos_control, *attitude_control);
 #else
-    wp_nav = NEW_NOTHROW AC_WPNav(inertial_nav, *ahrs_view, *pos_control, *attitude_control);
+    wp_nav = new AC_WPNav(inertial_nav, *ahrs_view, *pos_control, *attitude_control);
 #endif
     if (wp_nav == nullptr) {
         AP_BoardConfig::allocation_error("WPNav");
     }
     AP_Param::load_object_from_eeprom(wp_nav, wp_nav->var_info);
 
-    loiter_nav = NEW_NOTHROW AC_Loiter(inertial_nav, *ahrs_view, *pos_control, *attitude_control);
+    loiter_nav = new AC_Loiter(inertial_nav, *ahrs_view, *pos_control, *attitude_control);
     if (loiter_nav == nullptr) {
         AP_BoardConfig::allocation_error("LoiterNav");
     }
     AP_Param::load_object_from_eeprom(loiter_nav, loiter_nav->var_info);
 
-#if MODE_CIRCLE_ENABLED
-    circle_nav = NEW_NOTHROW AC_Circle(inertial_nav, *ahrs_view, *pos_control);
+#if MODE_CIRCLE_ENABLED == ENABLED
+    circle_nav = new AC_Circle(inertial_nav, *ahrs_view, *pos_control);
     if (circle_nav == nullptr) {
         AP_BoardConfig::allocation_error("CircleNav");
     }
@@ -480,7 +537,7 @@ void Copter::allocate_motors(void)
 
     // reload lines from the defaults file that may now be accessible
     AP_Param::reload_defaults_file(true);
-    
+
     // now setup some frame-class specific defaults
     switch ((AP_Motors::motor_frame_class)g2.frame_class.get()) {
     case AP_Motors::MOTOR_FRAME_Y6:
@@ -502,10 +559,11 @@ void Copter::allocate_motors(void)
     if (motors->is_brushed_pwm_type()) {
         g.rc_speed.set_default(16000);
     }
-    
+
     // upgrade parameters. This must be done after allocating the objects
     convert_pid_parameters();
 #if FRAME_CONFIG == HELI_FRAME
+    convert_tradheli_parameters();
     motors->heli_motors_param_conversions();
 #endif
 
