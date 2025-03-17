@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "---------- $0 start ----------"
 set -e
 set -x
@@ -42,7 +42,7 @@ echo "Checking homebrew..."
 $(which -s brew) ||
 {
     echo "installing homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /usr/bin/env bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 } 
 echo "Homebrew installed"
 
@@ -106,9 +106,9 @@ find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/*' -delete
 
 # brew update randomly failing on CI, so ignore errors:
 brew update
-brew install --force --overwrite gawk curl coreutils wget
+brew install --force --overwrite gawk coreutils wget
 
-PIP=pip
+PIP="python3 -m pip"
 if maybe_prompt_user "Install python using pyenv [N/y]?" ; then
     echo "Checking pyenv..."
     {
