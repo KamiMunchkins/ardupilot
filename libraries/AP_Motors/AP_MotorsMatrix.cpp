@@ -13,22 +13,34 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// SBL add
+#include "../../GCS_MAVLink/GCS_MAVLink.h"    // MAVLink GCS definitions
+#include <GCS_MAVLink/GCS.h>
+                                        //
 #include <AP_HAL/AP_HAL.h>
 #include "AP_MotorsMatrix.h"
 #include <AP_Vehicle/AP_Vehicle_Type.h>
+
+
 
 extern const AP_HAL::HAL& hal;
 
 // init
 void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame_type)
 {
+    // SBL frame_class should be SUB_FRAME_CUSTOM
     // record requested frame class and type
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init");
+
     _active_frame_class = frame_class;
     _active_frame_type = frame_type;
 
-    if (frame_class == MOTOR_FRAME_SCRIPTING_MATRIX) {
-        // if Scripting frame class, do nothing scripting must call its own dedicated init function
-        return;
+    // SBL DISABLE
+    if (false) {
+        if (frame_class == MOTOR_FRAME_SCRIPTING_MATRIX) {
+            // if Scripting frame class, do nothing scripting must call its own dedicated init function
+            return;
+        }
     }
 
     // setup the motors
@@ -42,6 +54,7 @@ void AP_MotorsMatrix::init(motor_frame_class frame_class, motor_frame_type frame
 // dedicated init for lua scripting
 bool AP_MotorsMatrix::init(uint8_t expected_num_motors)
 {
+    //gcs().send_text(MAV_SEVERITY_INFO,"SBL inside matrix init v2");
     if (_active_frame_class != MOTOR_FRAME_SCRIPTING_MATRIX) {
         // not the correct class
         return false;
@@ -148,7 +161,7 @@ void AP_MotorsMatrix::output_to_motors()
         case SpoolState::SHUT_DOWN: {
             // no output
             for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled_mask(i)) {
+                if (motor_enabled[i]) {
                     _actuator[i] = 0.0f;
                 }
             }
@@ -505,6 +518,7 @@ void AP_MotorsMatrix::add_motor_raw(int8_t motor_num, float roll_fac, float pitc
         // do not allow motors to be set if the current frame type has init correctly
         return;
     }
+    debugSet3 = true;
 
     // ensure valid motor number is provided
     if (motor_num >= 0 && motor_num < AP_MOTORS_MAX_NUM_MOTORS) {
@@ -591,9 +605,15 @@ bool AP_MotorsMatrix::setup_quad_matrix(motor_frame_type frame_type)
     case MOTOR_FRAME_TYPE_X: {
         _frame_type_string = "X";
         static const AP_MotorsMatrix::MotorDef motors[] {
+            // top right
             {   45, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  1 },
+            // bottom left
             { -135, AP_MOTORS_MATRIX_YAW_FACTOR_CCW,  3 },
+            // top left
+            // clockwise is negative 1
+            // counterclockwise is POSITIVE 1
             {  -45, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   4 },
+            // bottom right
             {  135, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   2 },
         };
         add_motors(motors, ARRAY_SIZE(motors));
@@ -686,7 +706,7 @@ bool AP_MotorsMatrix::setup_quad_matrix(motor_frame_type frame_type)
         break;
     }
     case MOTOR_FRAME_TYPE_H: {
-        // H frame set-up - same as X but motors spin in opposite directions
+        // H frame set-up - same as X but motors spin in opposite directiSons
         _frame_type_string = "H";
         static const AP_MotorsMatrix::MotorDef motors[] {
             {   45, AP_MOTORS_MATRIX_YAW_FACTOR_CW,   1 },
@@ -1250,12 +1270,48 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
     set_initialised_ok(false);
     bool success = true;
 
-    add_motor_raw(AP_MOTORS_MOT_1, 0, 0.787, 0, 6);
-    add_motor_raw(AP_MOTORS_MOT_2, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 1);
-    add_motor_raw(AP_MOTORS_MOT_3, 0, 0.787, 0, 8);
-    add_motor_raw(AP_MOTORS_MOT_4, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 2);
-    add_motor_raw(AP_MOTORS_MOT_5, -0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 3);
-    add_motor_raw(AP_MOTORS_MOT_6, 0.606, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 4);
+    switch (frame_class) {
+#if AP_MOTORS_FRAME_QUAD_ENABLED
+    case MOTOR_FRAME_QUAD:
+        success = setup_quad_matrix(frame_type);
+        break;  // quad
+#endif //AP_MOTORS_FRAME_QUAD_ENABLED
+#if AP_MOTORS_FRAME_HEXA_ENABLED
+    case MOTOR_FRAME_HEXA:
+        success = setup_hexa_matrix(frame_type);
+        break;
+#endif //AP_MOTORS_FRAME_HEXA_ENABLED
+#if AP_MOTORS_FRAME_OCTA_ENABLED
+    case MOTOR_FRAME_OCTA:
+        success = setup_octa_matrix(frame_type);
+        break;
+#endif //AP_MOTORS_FRAME_OCTA_ENABLED
+#if AP_MOTORS_FRAME_OCTAQUAD_ENABLED
+    case MOTOR_FRAME_OCTAQUAD:
+        success = setup_octaquad_matrix(frame_type);
+        break;
+#endif //AP_MOTORS_FRAME_OCTAQUAD_ENABLED
+#if AP_MOTORS_FRAME_DODECAHEXA_ENABLED
+    case MOTOR_FRAME_DODECAHEXA:
+        success = setup_dodecahexa_matrix(frame_type);
+        break;
+#endif //AP_MOTORS_FRAME_DODECAHEXA_ENABLED
+#if AP_MOTORS_FRAME_Y6_ENABLED
+    case MOTOR_FRAME_Y6:
+        success = setup_y6_matrix(frame_type);
+        break;
+#endif //AP_MOTORS_FRAME_Y6_ENABLED
+#if AP_MOTORS_FRAME_DECA_ENABLED
+    case MOTOR_FRAME_DECA:
+        success = setup_deca_matrix(frame_type);
+        break;
+#endif //AP_MOTORS_FRAME_DECA_ENABLED
+    default:
+        // matrix doesn't support the configured class
+        success = false;
+        _mav_type = MAV_TYPE_GENERIC;
+        break;
+    } // switch frame_class
 
     // normalise factors to magnitude 0.5
     normalise_rpy_factors();
